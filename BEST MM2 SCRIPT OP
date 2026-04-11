@@ -1,13 +1,13 @@
--- YAGAMI HUB - WORKING GUARANTEED
+-- YAGAMI HUB - COMPLETE WORKING SCRIPT
 -- Works on Delta, Synapse, Krnl, ScriptWare, Fluxus, Oxygen U
 
--- Wait for game to fully load
 repeat wait() until game:IsLoaded()
 
--- Get local player
 local plr = game:GetService("Players").LocalPlayer
+local UserInput = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
--- Create GUI on the player
+-- Create GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "YagamiHub"
 screenGui.Parent = plr:WaitForChild("PlayerGui")
@@ -17,26 +17,23 @@ screenGui.ResetOnSpawn = false
 -- LOADING SCREEN (Mini Rectangle)
 -- ============================================
 local loadingFrame = Instance.new("Frame")
-loadingFrame.Size = UDim2.new(0, 350, 0, 200)
-loadingFrame.Position = UDim2.new(0.5, -175, 0.5, -100)
+loadingFrame.Size = UDim2.new(0, 400, 0, 200)
+loadingFrame.Position = UDim2.new(0.5, -200, 0.5, -100)
 loadingFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
 loadingFrame.BackgroundTransparency = 0
 loadingFrame.BorderSizePixel = 0
 loadingFrame.Parent = screenGui
 
--- Corners
 local loadingCorner = Instance.new("UICorner")
 loadingCorner.CornerRadius = UDim.new(0, 12)
 loadingCorner.Parent = loadingFrame
 
--- Border
 local loadingStroke = Instance.new("UIStroke")
 loadingStroke.Color = Color3.fromRGB(0, 200, 255)
 loadingStroke.Thickness = 2
 loadingStroke.Transparency = 0.5
 loadingStroke.Parent = loadingFrame
 
--- Title
 local loadingTitle = Instance.new("TextLabel")
 loadingTitle.Size = UDim2.new(1, 0, 0, 40)
 loadingTitle.Position = UDim2.new(0, 0, 0, 15)
@@ -45,10 +42,8 @@ loadingTitle.Text = "YAGAMI HUB"
 loadingTitle.TextColor3 = Color3.fromRGB(0, 200, 255)
 loadingTitle.TextSize = 24
 loadingTitle.Font = Enum.Font.GothamBold
-loadingTitle.TextStrokeTransparency = 0.3
 loadingTitle.Parent = loadingFrame
 
--- Progress bar background
 local progressBg = Instance.new("Frame")
 progressBg.Size = UDim2.new(0.8, 0, 0, 8)
 progressBg.Position = UDim2.new(0.1, 0, 0.55, 0)
@@ -60,7 +55,6 @@ local progressBgCorner = Instance.new("UICorner")
 progressBgCorner.CornerRadius = UDim.new(1, 0)
 progressBgCorner.Parent = progressBg
 
--- Progress bar fill
 local progressFill = Instance.new("Frame")
 progressFill.Size = UDim2.new(0, 0, 1, 0)
 progressFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
@@ -71,7 +65,6 @@ local progressFillCorner = Instance.new("UICorner")
 progressFillCorner.CornerRadius = UDim.new(1, 0)
 progressFillCorner.Parent = progressFill
 
--- Percentage text
 local percentText = Instance.new("TextLabel")
 percentText.Size = UDim2.new(0.3, 0, 0, 30)
 percentText.Position = UDim2.new(0.35, 0, 0.7, 0)
@@ -82,7 +75,6 @@ percentText.TextSize = 18
 percentText.Font = Enum.Font.Gotham
 percentText.Parent = loadingFrame
 
--- Subtitle
 local subText = Instance.new("TextLabel")
 subText.Size = UDim2.new(0.9, 0, 0, 25)
 subText.Position = UDim2.new(0.05, 0, 0.82, 0)
@@ -94,11 +86,11 @@ subText.Font = Enum.Font.Gotham
 subText.Parent = loadingFrame
 
 -- ============================================
--- MAIN GUI (Big Rectangle)
+-- MAIN GUI (Stretched Horizontally)
 -- ============================================
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 500, 0, 350)
-mainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+mainFrame.Size = UDim2.new(0, 800, 0, 500)
+mainFrame.Position = UDim2.new(0.5, -400, 0.5, -250)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
 mainFrame.BackgroundTransparency = 0
 mainFrame.BorderSizePixel = 0
@@ -115,9 +107,9 @@ mainStroke.Thickness = 2
 mainStroke.Transparency = 0.3
 mainStroke.Parent = mainFrame
 
--- Title Bar (for dragging)
+-- Title Bar
 local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 40)
+titleBar.Size = UDim2.new(1, 0, 0, 45)
 titleBar.Position = UDim2.new(0, 0, 0, 0)
 titleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 45)
 titleBar.BackgroundTransparency = 0
@@ -130,78 +122,168 @@ titleBarCorner.Parent = titleBar
 
 -- Title text
 local titleText = Instance.new("TextLabel")
-titleText.Size = UDim2.new(0.6, 0, 1, 0)
+titleText.Size = UDim2.new(0.5, 0, 1, 0)
 titleText.Position = UDim2.new(0.05, 0, 0, 0)
 titleText.BackgroundTransparency = 1
 titleText.Text = "YAGAMI HUB"
 titleText.TextColor3 = Color3.fromRGB(0, 200, 255)
-titleText.TextSize = 20
+titleText.TextSize = 22
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.Font = Enum.Font.GothamBold
 titleText.Parent = titleBar
 
--- Close button (X)
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 35, 1, 0)
-closeBtn.Position = UDim2.new(1, -35, 0, 0)
-closeBtn.BackgroundColor3 = Color3.fromRGB(50, 35, 35)
-closeBtn.BackgroundTransparency = 0
-closeBtn.BorderSizePixel = 0
-closeBtn.Text = "X"
-closeBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-closeBtn.TextSize = 18
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.Parent = titleBar
+-- Close/Minimize Button (changes between X and O)
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 40, 1, 0)
+toggleBtn.Position = UDim2.new(1, -45, 0, 0)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 35, 35)
+toggleBtn.BackgroundTransparency = 0
+toggleBtn.BorderSizePixel = 0
+toggleBtn.Text = "X"
+toggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+toggleBtn.TextSize = 20
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.Parent = titleBar
 
-local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(0, 8)
-closeCorner.Parent = closeBtn
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 8)
+toggleCorner.Parent = toggleBtn
 
--- Minimize button (O)
-local minBtn = Instance.new("TextButton")
-minBtn.Size = UDim2.new(0, 35, 1, 0)
-minBtn.Position = UDim2.new(1, -75, 0, 0)
-minBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-minBtn.BackgroundTransparency = 0
-minBtn.BorderSizePixel = 0
-minBtn.Text = "O"
-minBtn.TextColor3 = Color3.fromRGB(200, 200, 100)
-minBtn.TextSize = 18
-minBtn.Font = Enum.Font.GothamBold
-minBtn.Parent = titleBar
+-- ============================================
+-- SIDE NAVIGATION (5 Sections on the Right)
+-- ============================================
+local navFrame = Instance.new("Frame")
+navFrame.Size = UDim2.new(0, 150, 1, -55)
+navFrame.Position = UDim2.new(1, -160, 0, 50)
+navFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+navFrame.BackgroundTransparency = 0.2
+navFrame.BorderSizePixel = 0
+navFrame.Parent = mainFrame
 
-local minCorner = Instance.new("UICorner")
-minCorner.CornerRadius = UDim.new(0, 8)
-minCorner.Parent = minBtn
+local navCorner = Instance.new("UICorner")
+navCorner.CornerRadius = UDim.new(0, 8)
+navCorner.Parent = navFrame
 
--- Content area
-local contentArea = Instance.new("Frame")
-contentArea.Size = UDim2.new(1, -20, 1, -55)
-contentArea.Position = UDim2.new(0, 10, 0, 50)
-contentArea.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
-contentArea.BackgroundTransparency = 0.3
-contentArea.BorderSizePixel = 0
-contentArea.Parent = mainFrame
+-- Content display area (left side)
+local contentFrame = Instance.new("Frame")
+contentFrame.Size = UDim2.new(1, -170, 1, -55)
+contentFrame.Position = UDim2.new(0, 10, 0, 50)
+contentFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+contentFrame.BackgroundTransparency = 0.3
+contentFrame.BorderSizePixel = 0
+contentFrame.Parent = mainFrame
 
 local contentCorner = Instance.new("UICorner")
 contentCorner.CornerRadius = UDim.new(0, 8)
-contentCorner.Parent = contentArea
+contentCorner.Parent = contentFrame
 
--- Placeholder text
-local placeholder = Instance.new("TextLabel")
-placeholder.Size = UDim2.new(1, 0, 1, 0)
-placeholder.BackgroundTransparency = 1
-placeholder.Text = "No functions added yet\n\nComing soon..."
-placeholder.TextColor3 = Color3.fromRGB(150, 150, 200)
-placeholder.TextSize = 16
-placeholder.Font = Enum.Font.Gotham
-placeholder.TextWrapped = true
-placeholder.Parent = contentArea
+-- Section buttons (5 sections)
+local sections = {"Main", "Combat", "Auto-farm", "Visuals", "Settings"}
+local sectionButtons = {}
+local activeSection = nil
+
+-- Function to create section content
+local function createSectionContent(sectionName)
+    -- Clear content frame
+    for _, child in pairs(contentFrame:GetChildren()) do
+        if child.Name ~= "UICorner" then
+            child:Destroy()
+        end
+    end
+    
+    -- Create title for section
+    local sectionTitle = Instance.new("TextLabel")
+    sectionTitle.Size = UDim2.new(1, 0, 0, 40)
+    sectionTitle.Position = UDim2.new(0, 0, 0, 10)
+    sectionTitle.BackgroundTransparency = 1
+    sectionTitle.Text = sectionName
+    sectionTitle.TextColor3 = Color3.fromRGB(0, 200, 255)
+    sectionTitle.TextSize = 24
+    sectionTitle.Font = Enum.Font.GothamBold
+    sectionTitle.TextXAlignment = Enum.TextXAlignment.Center
+    sectionTitle.Parent = contentFrame
+    
+    -- Placeholder text
+    local placeholderText = Instance.new("TextLabel")
+    placeholderText.Size = UDim2.new(1, 0, 0, 30)
+    placeholderText.Position = UDim2.new(0, 0, 0, 60)
+    placeholderText.BackgroundTransparency = 1
+    placeholderText.Text = "No functions added yet\nComing soon..."
+    placeholderText.TextColor3 = Color3.fromRGB(150, 150, 200)
+    placeholderText.TextSize = 16
+    placeholderText.Font = Enum.Font.Gotham
+    placeholderText.TextWrapped = true
+    placeholderText.Parent = contentFrame
+    
+    -- Add specific placeholder based on section
+    if sectionName == "Main" then
+        placeholderText.Text = "Main Hub Functions\n\n- Player Info\n- Server Info\n- Rejoin\n- Server Hop"
+    elseif sectionName == "Combat" then
+        placeholderText.Text = "Combat Features\n\n- Aim Assist\n- Trigger Bot\n- Silent Aim\n- Anti-Aim"
+    elseif sectionName == "Auto-farm" then
+        placeholderText.Text = "Auto-Farm Features\n\n- Auto Farm\n- Auto Collect\n- Auto Quest\n- Auto Sell"
+    elseif sectionName == "Visuals" then
+        placeholderText.Text = "Visual Enhancements\n\n- ESP\n- Chams\n- Tracers\n- FOV Changer"
+    elseif sectionName == "Settings" then
+        placeholderText.Text = "Settings\n\n- GUI Settings\n- Keybinds\n- Save Config\n- Load Config"
+    end
+end
+
+-- Create section buttons
+for i, sectionName in ipairs(sections) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 45)
+    btn.Position = UDim2.new(0.05, 0, 0, (i-1) * 55 + 10)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 55)
+    btn.BackgroundTransparency = 0
+    btn.BorderSizePixel = 0
+    btn.Text = sectionName
+    btn.TextColor3 = Color3.fromRGB(200, 200, 255)
+    btn.TextSize = 16
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = navFrame
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = btn
+    
+    -- Hover effects
+    btn.MouseEnter:Connect(function()
+        if activeSection ~= btn then
+            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+        end
+    end)
+    
+    btn.MouseLeave:Connect(function()
+        if activeSection ~= btn then
+            btn.BackgroundColor3 = Color3.fromRGB(30, 30, 55)
+        end
+    end)
+    
+    -- Click handler
+    btn.MouseButton1Click:Connect(function()
+        -- Reset all buttons
+        for _, b in pairs(sectionButtons) do
+            b.BackgroundColor3 = Color3.fromRGB(30, 30, 55)
+            b.TextColor3 = Color3.fromRGB(200, 200, 255)
+        end
+        -- Highlight active button
+        btn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        activeSection = btn
+        -- Create content for this section
+        createSectionContent(sectionName)
+    end)
+    
+    sectionButtons[sectionName] = btn
+end
+
+-- Default select Main section
+sectionButtons["Main"].MouseButton1Click:Fire()
 
 -- ============================================
--- DRAG FUNCTIONALITY (Works on Mobile + PC)
+-- DRAG FUNCTIONALITY
 -- ============================================
-local UserInput = game:GetService("UserInputService")
 local dragging = false
 local dragStartPos = nil
 local frameStartPos = nil
@@ -233,58 +315,50 @@ UserInput.InputEnded:Connect(function(input)
 end)
 
 -- ============================================
--- BUTTON FUNCTIONS
+-- TOGGLE BUTTON FUNCTIONALITY (X and O)
 -- ============================================
--- Close GUI
-closeBtn.MouseButton1Click:Connect(function()
-    mainFrame.Visible = false
-    screenGui.Enabled = false
-end)
+local isMinimized = false
 
-closeBtn.TouchTap:Connect(function()
-    mainFrame.Visible = false
-    screenGui.Enabled = false
-end)
-
--- Minimize/Restore GUI
-local minimized = false
-minBtn.MouseButton1Click:Connect(function()
-    if minimized then
-        -- Restore
-        local tween = game:GetService("TweenService"):Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 500, 0, 350)
+local function toggleGUI()
+    if isMinimized then
+        -- EXPAND: Show full GUI
+        local expandTween = TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 800, 0, 500)
         })
-        tween:Play()
-        contentArea.Visible = true
-        minimized = false
+        expandTween:Play()
+        
+        -- Show navigation and content
+        navFrame.Visible = true
+        contentFrame.Visible = true
+        
+        -- Change button back to X
+        toggleBtn.Text = "X"
+        toggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 35, 35)
+        
+        isMinimized = false
     else
-        -- Minimize
-        local tween = game:GetService("TweenService"):Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-            Size = UDim2.new(0, 150, 0, 40)
+        -- MINIMIZE: Shrink to title only
+        local shrinkTween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 200, 0, 45)
         })
-        tween:Play()
-        contentArea.Visible = false
-        minimized = true
+        shrinkTween:Play()
+        
+        -- Hide navigation and content
+        navFrame.Visible = false
+        contentFrame.Visible = false
+        
+        -- Change button to O (open)
+        toggleBtn.Text = "O"
+        toggleBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(35, 50, 35)
+        
+        isMinimized = true
     end
-end)
+end
 
-minBtn.TouchTap:Connect(function()
-    if minimized then
-        local tween = game:GetService("TweenService"):Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 500, 0, 350)
-        })
-        tween:Play()
-        contentArea.Visible = true
-        minimized = false
-    else
-        local tween = game:GetService("TweenService"):Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-            Size = UDim2.new(0, 150, 0, 40)
-        })
-        tween:Play()
-        contentArea.Visible = false
-        minimized = true
-    end
-end)
+toggleBtn.MouseButton1Click:Connect(toggleGUI)
+toggleBtn.TouchTap:Connect(toggleGUI)
 
 -- ============================================
 -- LOADING ANIMATION
@@ -301,19 +375,16 @@ local loadingSteps = {
 
 local stepIndex = 1
 for i = 1, 100 do
-    wait(0.025)
+    wait(0.02)
     
-    -- Update progress bar
     progressFill.Size = UDim2.new(i / 100, 0, 1, 0)
     percentText.Text = i .. "%"
     
-    -- Update subtitle text based on progress
     if i >= stepIndex * 14 and stepIndex <= #loadingSteps then
         subText.Text = loadingSteps[stepIndex]
         stepIndex = stepIndex + 1
     end
     
-    -- Change color as it loads
     local hue = 0.55 + (i / 100) * 0.2
     progressFill.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
 end
@@ -321,8 +392,7 @@ end
 -- ============================================
 -- TRANSITION TO MAIN GUI
 -- ============================================
--- Hide loading screen
-local hideTween = game:GetService("TweenService"):Create(loadingFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+local hideTween = TweenService:Create(loadingFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
     Size = UDim2.new(0, 0, 0, 0)
 })
 hideTween:Play()
@@ -330,19 +400,18 @@ hideTween:Play()
 wait(0.3)
 loadingFrame.Visible = false
 
--- Show main GUI with pop effect
 mainFrame.Visible = true
 mainFrame.Size = UDim2.new(0, 0, 0, 0)
 
-local showTween = game:GetService("TweenService"):Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Size = UDim2.new(0, 500, 0, 350)
+local showTween = TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Size = UDim2.new(0, 800, 0, 500)
 })
 showTween:Play()
 
--- Create a little particle burst effect
+-- Particle burst
 local burst = Instance.new("ParticleEmitter")
 burst.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-burst.Rate = 100
+burst.Rate = 150
 burst.Lifetime = NumberRange.new(0.5, 1)
 burst.Speed = NumberRange.new(5, 15)
 burst.Transparency = NumberSequence.new(1, 0)
@@ -351,23 +420,26 @@ burst.Parent = mainFrame
 wait(0.5)
 burst:Destroy()
 
-print("Yagami Hub Loaded Successfully!")
+print("YAGAMI HUB - Fully Loaded!")
 
 -- ============================================
--- RE-OPEN FUNCTION (if GUI gets closed)
+-- RE-OPEN HOTKEY (Press R)
 -- ============================================
--- You can re-open with this command in executor:
--- game.Players.LocalPlayer.PlayerGui.YagamiHub.Enabled = true
--- game.Players.LocalPlayer.PlayerGui.YagamiHub.MainFrame.Visible = true
-
--- Add a re-open hotkey (press R to reopen)
-game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+UserInput.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.R then
-        screenGui.Enabled = true
-        mainFrame.Visible = true
-        mainFrame.Size = UDim2.new(0, 500, 0, 350)
-        minimized = false
-        contentArea.Visible = true
+        if isMinimized then
+            -- If minimized, expand it
+            toggleGUI()
+        elseif not mainFrame.Visible then
+            -- If closed, reopen
+            screenGui.Enabled = true
+            mainFrame.Visible = true
+            mainFrame.Size = UDim2.new(0, 800, 0, 500)
+            navFrame.Visible = true
+            contentFrame.Visible = true
+            toggleBtn.Text = "X"
+            isMinimized = false
+        end
     end
 end)
