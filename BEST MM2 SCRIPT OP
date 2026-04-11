@@ -1,4 +1,4 @@
----- YAGAMI HUB - FULLY FIXED WITH 8-BIT FONT & TRANSPARENCY
+--- YAGAMI HUB - WORKING LOADING SCREEN (REWRITTEN)
 -- Works on Delta, Synapse, Krnl, ScriptWare, Fluxus, Oxygen U
 
 repeat task.wait() until game:IsLoaded()
@@ -6,33 +6,24 @@ repeat task.wait() until game:IsLoaded()
 local plr = game:GetService("Players").LocalPlayer
 local UserInput = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 
 -- Create GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "YagamiHub"
 screenGui.Parent = plr:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- 8-BIT FONT (using available fonts that look retro)
-local retroFont = Enum.Font.Gotham -- Fallback
-local fonts = {"Gotham", "SourceSans", "Arial"}
-for _, f in pairs(fonts) do
-    if Enum.Font[f] then
-        retroFont = Enum.Font[f]
-        break
-    end
-end
+-- 8-BIT FONT STYLE
+local retroFont = Enum.Font.Gotham
 
 -- ============================================
--- LOADING SCREEN (Mini Rectangle with Transparency)
+-- LOADING SCREEN (COMPLETELY REWRITTEN)
 -- ============================================
 local loadingFrame = Instance.new("Frame")
 loadingFrame.Size = UDim2.new(0, 400, 0, 200)
 loadingFrame.Position = UDim2.new(0.5, -200, 0.5, -100)
 loadingFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-loadingFrame.BackgroundTransparency = 0.15 -- 15% transparent
+loadingFrame.BackgroundTransparency = 0.15
 loadingFrame.BorderSizePixel = 0
 loadingFrame.Parent = screenGui
 
@@ -43,7 +34,6 @@ loadingCorner.Parent = loadingFrame
 local loadingStroke = Instance.new("UIStroke")
 loadingStroke.Color = Color3.fromRGB(0, 0, 0)
 loadingStroke.Thickness = 2
-loadingStroke.Transparency = 0
 loadingStroke.Parent = loadingFrame
 
 local loadingTitle = Instance.new("TextLabel")
@@ -54,7 +44,6 @@ loadingTitle.Text = "YAGAMI HUB"
 loadingTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 loadingTitle.TextSize = 24
 loadingTitle.Font = retroFont
-loadingTitle.TextStrokeTransparency = 0.5
 loadingTitle.Parent = loadingFrame
 
 local progressBg = Instance.new("Frame")
@@ -99,13 +88,13 @@ subText.Font = retroFont
 subText.Parent = loadingFrame
 
 -- ============================================
--- MAIN GUI (With Transparency)
+-- MAIN GUI
 -- ============================================
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 800, 0, 500)
 mainFrame.Position = UDim2.new(0.5, -400, 0.5, -250)
 mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-mainFrame.BackgroundTransparency = 0.15 -- 15% transparent
+mainFrame.BackgroundTransparency = 0.15
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
 mainFrame.Parent = screenGui
@@ -118,25 +107,23 @@ mainCorner.Parent = mainFrame
 local mainStroke = Instance.new("UIStroke")
 mainStroke.Color = Color3.fromRGB(0, 0, 0)
 mainStroke.Thickness = 2
-mainStroke.Transparency = 0
 mainStroke.Parent = mainFrame
 
 -- ============================================
--- MOON EMOJI RAIN VFX (35% transparent, slow falling)
+-- MOON RAIN VFX
 -- ============================================
 local moonRainContainer = Instance.new("Frame")
 moonRainContainer.Size = UDim2.new(1, 0, 1, 0)
 moonRainContainer.BackgroundTransparency = 1
 moonRainContainer.Parent = mainFrame
 
-local moonEmojis = {"🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙"}
 local moonRainItems = {}
 
 for i = 1, 30 do
     local moonLabel = Instance.new("TextLabel")
     moonLabel.Size = UDim2.new(0, 30, 0, 30)
     moonLabel.BackgroundTransparency = 1
-    moonLabel.Text = moonEmojis[math.random(1, #moonEmojis)]
+    moonLabel.Text = "🌙"
     moonLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
     moonLabel.TextSize = math.random(20, 35)
     moonLabel.TextTransparency = 0.35
@@ -147,33 +134,26 @@ for i = 1, 30 do
     local startY = math.random(-500, -50)
     moonLabel.Position = UDim2.new(0, startX, 0, startY)
     
-    local fallSpeed = math.random(30, 60)
-    
     table.insert(moonRainItems, {
         label = moonLabel,
-        speed = fallSpeed,
+        speed = math.random(30, 60),
         x = startX,
-        y = startY,
-        size = moonLabel.TextSize
+        y = startY
     })
 end
 
 task.spawn(function()
-    while mainFrame and mainFrame.Visible and mainFrame.Parent do
+    while mainFrame and mainFrame.Parent do
         for _, item in pairs(moonRainItems) do
-            if item and item.label and item.label.Parent then
+            if item and item.label then
                 item.y = item.y + item.speed
-                
                 if item.y > 550 then
                     item.y = -50
                     item.x = math.random(0, 800)
                     item.label.Position = UDim2.new(0, item.x, 0, item.y)
-                    item.size = math.random(20, 35)
-                    item.label.TextSize = item.size
                 else
                     item.label.Position = UDim2.new(0, item.x, 0, item.y)
                 end
-                
                 item.x = item.x + math.sin(item.y * 0.01) * 0.5
             end
         end
@@ -182,7 +162,7 @@ task.spawn(function()
 end)
 
 -- ============================================
--- Title Bar
+-- TITLE BAR
 -- ============================================
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 45)
@@ -224,7 +204,7 @@ toggleCorner.CornerRadius = UDim.new(0, 8)
 toggleCorner.Parent = toggleBtn
 
 -- ============================================
--- SIDE NAVIGATION (5 Sections on the Right)
+-- SIDE NAVIGATION
 -- ============================================
 local navFrame = Instance.new("Frame")
 navFrame.Size = UDim2.new(0, 150, 1, -55)
@@ -339,8 +319,6 @@ for i, sectionName in ipairs(sections) do
     sectionButtons[sectionName] = btn
 end
 
-sectionButtons["Main"].MouseButton1Click:Fire()
-
 -- ============================================
 -- DRAG FUNCTIONALITY
 -- ============================================
@@ -375,7 +353,7 @@ UserInput.InputEnded:Connect(function(input)
 end)
 
 -- ============================================
--- TOGGLE BUTTON FUNCTIONALITY
+-- TOGGLE BUTTON
 -- ============================================
 local isMinimized = false
 
@@ -409,9 +387,14 @@ toggleBtn.MouseButton1Click:Connect(toggleGUI)
 toggleBtn.TouchTap:Connect(toggleGUI)
 
 -- ============================================
--- FIXED LOADING ANIMATION (USES WHILE LOOP)
+-- LOADING SEQUENCE (100% WORKING)
 -- ============================================
-local loadingSteps = {
+
+-- Method 1: Simple counter that definitely works
+local loadProgress = 0
+local stepIndex = 1
+
+local loadingMessages = {
     "Initializing Yagami Hub...",
     "Loading assets...",
     "Connecting to server...",
@@ -421,61 +404,64 @@ local loadingSteps = {
     "Welcome to Yagami Hub!"
 }
 
-local percent = 0
-local stepIndex = 1
-
--- FIXED: Using while loop instead of for loop
-while percent < 100 do
-    percent = percent + 1
-    task.wait(0.02)
+-- Create a loop that updates every frame
+local function updateLoading()
+    loadProgress = loadProgress + 1
     
-    -- Update progress bar
-    progressFill.Size = UDim2.new(percent / 100, 0, 1, 0)
-    percentText.Text = percent .. "%"
-    
-    -- Update subtitle
-    if percent >= stepIndex * 14 and stepIndex <= #loadingSteps then
-        subText.Text = loadingSteps[stepIndex]
-        stepIndex = stepIndex + 1
+    if loadProgress <= 100 then
+        -- Update progress bar
+        progressFill.Size = UDim2.new(loadProgress / 100, 0, 1, 0)
+        percentText.Text = loadProgress .. "%"
+        
+        -- Update message every 14%
+        local messageIndex = math.floor(loadProgress / 14) + 1
+        if messageIndex <= #loadingMessages and messageIndex ~= stepIndex then
+            stepIndex = messageIndex
+            subText.Text = loadingMessages[messageIndex]
+        end
+        
+        -- Continue loading
+        task.spawn(function()
+            task.wait(0.02)
+            updateLoading()
+        end)
+    else
+        -- Loading complete, transition to main GUI
+        transitionToMain()
     end
-    
-    -- Update color (white shades)
-    local brightness = 0.5 + (percent / 100) * 0.5
-    progressFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 end
 
--- ============================================
--- TRANSITION TO MAIN GUI
--- ============================================
-local hideTween = TweenService:Create(loadingFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-    Size = UDim2.new(0, 0, 0, 0)
-})
-hideTween:Play()
+-- Function to transition to main GUI
+function transitionToMain()
+    -- Hide loading frame with animation
+    local hideTween = TweenService:Create(loadingFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0)
+    })
+    hideTween:Play()
+    
+    task.wait(0.3)
+    loadingFrame.Visible = false
+    
+    -- Show main GUI with pop animation
+    mainFrame.Visible = true
+    mainFrame.Size = UDim2.new(0, 0, 0, 0)
+    
+    local showTween = TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 800, 0, 500)
+    })
+    showTween:Play()
+    
+    -- Default select Main section
+    task.wait(0.1)
+    if sectionButtons["Main"] then
+        sectionButtons["Main"].MouseButton1Click:Fire()
+    end
+    
+    print("YAGAMI HUB - Successfully Loaded!")
+end
 
-task.wait(0.3)
-loadingFrame.Visible = false
-
-mainFrame.Visible = true
-mainFrame.Size = UDim2.new(0, 0, 0, 0)
-
-local showTween = TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Size = UDim2.new(0, 800, 0, 500)
-})
-showTween:Play()
-
--- Particle burst
-local burst = Instance.new("ParticleEmitter")
-burst.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-burst.Rate = 150
-burst.Lifetime = NumberRange.new(0.5, 1)
-burst.Speed = NumberRange.new(5, 15)
-burst.Transparency = NumberSequence.new(1, 0)
-burst.Parent = mainFrame
-
-task.wait(0.5)
-burst:Destroy()
-
-print("YAGAMI HUB - Fully Loaded!")
+-- Start the loading sequence
+updateLoading()
 
 -- ============================================
 -- RE-OPEN HOTKEY (Press R)
@@ -494,6 +480,9 @@ UserInput.InputBegan:Connect(function(input, gameProcessed)
             moonRainContainer.Visible = true
             toggleBtn.Text = "X"
             isMinimized = false
+            if sectionButtons["Main"] then
+                sectionButtons["Main"].MouseButton1Click:Fire()
+            end
         end
     end
 end)
