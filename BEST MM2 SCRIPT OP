@@ -1,6 +1,6 @@
--- -- YAGAMI HUB - MURDER MYSTERY 2 EDITION (FULLY FIXED)
+-- -- YAGAMI HUB - MURDER MYSTERY 2 EDITION (ULTIMATE)
 -- Works on Delta, Synapse, Krnl, ScriptWare, Fluxus, Oxygen U
--- Features: Role-Based ESP (Inventory Scan), Round Start Notifications, Fixed Auto Farm Coins, Fling Murderer/Sheriff
+-- Features: Automatic Round Notifications | Role-Based ESP | Fixed Auto Farm | Fling | Aimlock | Silent Aim
 
 repeat task.wait() until game:IsLoaded()
 
@@ -11,15 +11,17 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local VirtualUser = game:GetService("VirtualUser")
+local CoreGui = game:GetService("CoreGui")
 
 -- Create GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "YagamiHub"
 screenGui.Parent = plr:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-local retroFont = Enum.Font.Gotham
+local retroFont = Enum.Font.GothamBold
+local modernFont = Enum.Font.Gotham
 
 -- ============================================
 -- MM2 VARIABLES
@@ -33,9 +35,10 @@ local currentAimlockTarget = nil
 local noclipEnabled = false
 local espEnabled = false
 local espObjects = {}
-local lastNotificationTime = 0
-local currentMurderer = nil
-local currentSheriff = nil
+local lastRoundCheck = 0
+local lastMurderer = nil
+local lastSheriff = nil
+local roundActive = false
 
 -- FOV Circle Variables
 local fovCircle = nil
@@ -44,16 +47,15 @@ local circleAnimation = nil
 
 -- Role colors for ESP
 local ROLE_COLORS = {
-    Murderer = Color3.fromRGB(255, 0, 0),     -- Red
-    Sheriff = Color3.fromRGB(0, 100, 255),    -- Blue
-    Innocent = Color3.fromRGB(0, 255, 0)      -- Green
+    Murderer = Color3.fromRGB(255, 50, 50),
+    Sheriff = Color3.fromRGB(50, 150, 255),
+    Innocent = Color3.fromRGB(50, 255, 50)
 }
 
 -- ============================================
 -- INVENTORY SCANNER (DETECTS ROLE EVEN WHEN NOT HOLDING WEAPON)
 -- ============================================
 local function scanInventoryForRole(player)
-    -- Check player's backpack (inventory)
     local backpack = player:FindFirstChild("Backpack")
     if backpack then
         for _, item in pairs(backpack:GetChildren()) do
@@ -67,7 +69,6 @@ local function scanInventoryForRole(player)
         end
     end
     
-    -- Check player's character for held tools
     local character = player.Character
     if character then
         for _, item in pairs(character:GetChildren()) do
@@ -84,30 +85,27 @@ local function scanInventoryForRole(player)
     return "Innocent"
 end
 
--- Get player's role using inventory scan
 local function getPlayerRole(player)
     if player == plr then return currentRole end
     return scanInventoryForRole(player)
 end
 
--- Update global murderer/sheriff variables
 local function updateRoleVariables()
-    currentMurderer = nil
-    currentSheriff = nil
+    lastMurderer = nil
+    lastSheriff = nil
     
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= plr then
             local role = scanInventoryForRole(player)
             if role == "Murderer" then
-                currentMurderer = player
+                lastMurderer = player
             elseif role == "Sheriff" then
-                currentSheriff = player
+                lastSheriff = player
             end
         end
     end
 end
 
--- Function to get player's current role (self)
 local function updateSelfRole()
     if plr.Character then
         for _, v in pairs(plr.Character:GetChildren()) do
@@ -123,7 +121,6 @@ local function updateSelfRole()
         end
     end
     
-    -- Check backpack for self too
     local backpack = plr:FindFirstChild("Backpack")
     if backpack then
         for _, item in pairs(backpack:GetChildren()) do
@@ -143,71 +140,184 @@ local function updateSelfRole()
 end
 
 -- ============================================
--- ROUND START NOTIFICATION
+-- AUTOMATIC ROUND NOTIFICATION (RIGHT SIDE, ABOVE JUMP BUTTON)
 -- ============================================
-local function showRoleNotification()
-    local currentTime = tick()
-    if currentTime - lastNotificationTime < 5 then return end -- 5 second cooldown
+local function createFancyNotification(title, message, color)
+    -- Get screen size for positioning
+    local screenSize = Workspace.CurrentCamera.ViewportSize
     
+    -- Create notification container
+    local notifContainer = Instance.new("Frame")
+    notifContainer.Size = UDim2.new(0, 320, 0, 0)
+    notifContainer.Position = UDim2.new(1, -340, 1, -180)
+    notifContainer.BackgroundTransparency = 1
+    notifContainer.ClipsDescendants = true
+    notifContainer.Parent = screenGui
+    
+    -- Main notification frame
+    local notifFrame = Instance.new("Frame")
+    notifFrame.Size = UDim2.new(1, 0, 0, 0)
+    notifFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    notifFrame.BackgroundTransparency = 0.05
+    notifFrame.BorderSizePixel = 0
+    notifFrame.Parent = notifContainer
+    
+    local notifCorner = Instance.new("UICorner")
+    notifCorner.CornerRadius = UDim.new(0, 16)
+    notifCorner.Parent = notifFrame
+    
+    -- Glow effect
+    local glowFrame = Instance.new("Frame")
+    glowFrame.Size = UDim2.new(1, 0, 1, 0)
+    glowFrame.Position = UDim2.new(0, 0, 0, 0)
+    glowFrame.BackgroundColor3 = color
+    glowFrame.BackgroundTransparency = 0.9
+    glowFrame.BorderSizePixel = 0
+    glowFrame.Parent = notifFrame
+    
+    local glowCorner = Instance.new("UICorner")
+    glowCorner.CornerRadius = UDim.new(0, 16)
+    glowCorner.Parent = glowFrame
+    
+    -- Left accent bar
+    local accentBar = Instance.new("Frame")
+    accentBar.Size = UDim2.new(0, 5, 1, 0)
+    accentBar.BackgroundColor3 = color
+    accentBar.BorderSizePixel = 0
+    accentBar.Parent = notifFrame
+    
+    local accentCorner = Instance.new("UICorner")
+    accentCorner.CornerRadius = UDim.new(0, 3)
+    accentCorner.Parent = accentBar
+    
+    -- Icon
+    local icon = Instance.new("TextLabel")
+    icon.Size = UDim2.new(0, 40, 0, 40)
+    icon.Position = UDim2.new(0, 15, 0, 15)
+    icon.BackgroundTransparency = 1
+    icon.Text = title == "MURDERER" and "🔪" or "🔫"
+    icon.TextColor3 = color
+    icon.TextSize = 28
+    icon.Font = retroFont
+    icon.TextXAlignment = Enum.TextXAlignment.Center
+    icon.TextYAlignment = Enum.TextYAlignment.Center
+    icon.Parent = notifFrame
+    
+    -- Title text
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -70, 0, 25)
+    titleLabel.Position = UDim2.new(0, 65, 0, 12)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title
+    titleLabel.TextColor3 = color
+    titleLabel.TextSize = 18
+    titleLabel.Font = retroFont
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.TextYAlignment = Enum.TextYAlignment.Bottom
+    titleLabel.Parent = notifFrame
+    
+    -- Message text
+    local msgLabel = Instance.new("TextLabel")
+    msgLabel.Size = UDim2.new(1, -70, 0, 25)
+    msgLabel.Position = UDim2.new(0, 65, 0, 35)
+    msgLabel.BackgroundTransparency = 1
+    msgLabel.Text = message
+    msgLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    msgLabel.TextSize = 14
+    msgLabel.Font = modernFont
+    msgLabel.TextXAlignment = Enum.TextXAlignment.Left
+    msgLabel.TextYAlignment = Enum.TextYAlignment.Top
+    msgLabel.Parent = notifFrame
+    
+    -- Close button
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 25, 0, 25)
+    closeBtn.Position = UDim2.new(1, -35, 0, 10)
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+    closeBtn.TextSize = 16
+    closeBtn.Font = retroFont
+    closeBtn.Parent = notifFrame
+    
+    -- Animate in
+    notifFrame.Size = UDim2.new(1, 0, 0, 70)
+    notifFrame.BackgroundTransparency = 0.05
+    
+    local slideIn = TweenService:Create(notifContainer, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Position = UDim2.new(1, -340, 1, -200)
+    })
+    slideIn:Play()
+    
+    -- Pulse animation
+    local pulseUp = TweenService:Create(glowFrame, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+        BackgroundTransparency = 0.85
+    })
+    local pulseDown = TweenService:Create(glowFrame, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+        BackgroundTransparency = 0.9
+    })
+    
+    local pulseLoop = true
+    task.spawn(function()
+        while pulseLoop and notifFrame.Parent do
+            pulseUp:Play()
+            pulseUp.Completed:Wait()
+            pulseDown:Play()
+            pulseDown.Completed:Wait()
+        end
+    end)
+    
+    -- Auto remove after 5 seconds
+    closeBtn.MouseButton1Click:Connect(function()
+        pulseLoop = false
+        local slideOut = TweenService:Create(notifContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Position = UDim2.new(1, -340, 1, -180)
+        })
+        slideOut:Play()
+        task.wait(0.3)
+        notifContainer:Destroy()
+    end)
+    
+    task.delay(5, function()
+        if notifContainer and notifContainer.Parent then
+            pulseLoop = false
+            local slideOut = TweenService:Create(notifContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Position = UDim2.new(1, -340, 1, -180)
+            })
+            slideOut:Play()
+            task.wait(0.3)
+            notifContainer:Destroy()
+        end
+    end)
+end
+
+-- Automatic round check (every 2 seconds)
+local function checkForRoundStart()
     updateRoleVariables()
     
-    local notificationText = ""
-    if currentMurderer then
-        notificationText = "🔴 MURDERER: " .. currentMurderer.Name .. " 🔴"
-    else
-        notificationText = "🔴 No Murderer detected yet 🔴"
+    local currentTime = tick()
+    if currentTime - lastRoundCheck < 2 then return end
+    lastRoundCheck = currentTime
+    
+    -- Check if roles exist
+    local hasMurderer = lastMurderer ~= nil
+    local hasSheriff = lastSheriff ~= nil
+    local currentRoundActive = hasMurderer or hasSheriff
+    
+    -- Round started detection
+    if currentRoundActive and not roundActive then
+        roundActive = true
+        
+        -- Show notification for each role
+        if lastMurderer then
+            createFancyNotification("MURDERER", lastMurderer.Name .. " is the Murderer!", Color3.fromRGB(255, 50, 50))
+        end
+        if lastSheriff then
+            createFancyNotification("SHERIFF", lastSheriff.Name .. " is the Sheriff!", Color3.fromRGB(50, 150, 255))
+        end
+    elseif not currentRoundActive and roundActive then
+        roundActive = false
     end
-    
-    if currentSheriff then
-        notificationText = notificationText .. "\n🔵 SHERIFF: " .. currentSheriff.Name .. " 🔵"
-    else
-        notificationText = notificationText .. "\n🔵 No Sheriff detected yet 🔵"
-    end
-    
-    -- Create UI Notification
-    local notificationFrame = Instance.new("Frame")
-    notificationFrame.Size = UDim2.new(0, 350, 0, 80)
-    notificationFrame.Position = UDim2.new(0.5, -175, 0.2, 0)
-    notificationFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    notificationFrame.BackgroundTransparency = 0.2
-    notificationFrame.BorderSizePixel = 0
-    notificationFrame.Parent = screenGui
-    
-    local notificationCorner = Instance.new("UICorner")
-    notificationCorner.CornerRadius = UDim.new(0, 12)
-    notificationCorner.Parent = notificationFrame
-    
-    local notificationStroke = Instance.new("UIStroke")
-    notificationStroke.Color = Color3.fromRGB(255, 0, 0)
-    notificationStroke.Thickness = 2
-    notificationStroke.Parent = notificationFrame
-    
-    local notificationTextLabel = Instance.new("TextLabel")
-    notificationTextLabel.Size = UDim2.new(1, 0, 1, 0)
-    notificationTextLabel.BackgroundTransparency = 1
-    notificationTextLabel.Text = notificationText
-    notificationTextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    notificationTextLabel.TextSize = 16
-    notificationTextLabel.Font = retroFont
-    notificationTextLabel.TextWrapped = true
-    notificationTextLabel.Parent = notificationFrame
-    
-    -- Animate notification
-    notificationFrame.BackgroundTransparency = 0.2
-    local fadeOut = TweenService:Create(notificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Linear), {
-        BackgroundTransparency = 1
-    })
-    local moveUp = TweenService:Create(notificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {
-        Position = UDim2.new(0.5, -175, 0.1, 0)
-    })
-    
-    task.wait(3)
-    fadeOut:Play()
-    moveUp:Play()
-    task.wait(0.5)
-    notificationFrame:Destroy()
-    
-    lastNotificationTime = currentTime
 end
 
 -- ============================================
@@ -225,7 +335,6 @@ local function setNoclip(state)
     end
 end
 
--- FLY TO POSITION - FIXED
 local function flyToPosition(targetPos)
     local character = plr.Character
     if not character then return false end
@@ -259,7 +368,6 @@ local function flyToPosition(targetPos)
     return true
 end
 
--- Get Murderer player (for aimlock and fling)
 local function getMurderer()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= plr and player.Character and getPlayerRole(player) == "Murderer" then
@@ -269,7 +377,6 @@ local function getMurderer()
     return nil
 end
 
--- Get Sheriff player (for fling)
 local function getSheriff()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= plr and player.Character and getPlayerRole(player) == "Sheriff" then
@@ -279,7 +386,6 @@ local function getSheriff()
     return nil
 end
 
--- Get closest player (for universal silent aim)
 local function getClosestPlayer()
     local character = plr.Character
     if not character then return nil end
@@ -306,7 +412,6 @@ local function getClosestPlayer()
     return closest
 end
 
--- Get all coins on ground (FIXED)
 local function getCoins()
     local coins = {}
     local possibleCoinNames = {"Coin", "Money", "coin", "money", "Gem", "gem", "Token", "token", "Gold", "gold"}
@@ -327,9 +432,7 @@ local function getCoins()
                 isValidCoin = true
             end
             
-            -- Check if it's on ground (Y position low) and not held by player
             if isValidCoin and descendant.Parent and not descendant.Parent:IsA("Tool") and not descendant.Parent:IsA("Player") then
-                -- Also check if it's a collectible (has TouchInterest)
                 if descendant:FindFirstChild("TouchInterest") then
                     table.insert(coins, descendant)
                 end
@@ -340,7 +443,7 @@ local function getCoins()
 end
 
 -- ============================================
--- FLING FUNCTION (Murderer or Sheriff)
+-- FLING FUNCTION
 -- ============================================
 local function flingPlayer(targetPlayer)
     if not targetPlayer or not targetPlayer.Character then return false end
@@ -348,33 +451,25 @@ local function flingPlayer(targetPlayer)
     local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not targetRoot then return false end
     
-    -- Store original position
     local originalPos = targetRoot.Position
-    
-    -- Calculate fling direction (up and away)
-    local flingDirection = Vector3.new(math.random(-100, 100), 150, math.random(-100, 100))
+    local flingDirection = Vector3.new(math.random(-150, 150), 200, math.random(-150, 150))
     local flingVelocity = flingDirection
     
-    -- Apply velocity to fling the player
     local bodyVelocity = Instance.new("BodyVelocity")
     bodyVelocity.Velocity = flingVelocity
     bodyVelocity.MaxForce = Vector3.new(1e6, 1e6, 1e6)
     bodyVelocity.Parent = targetRoot
     
-    -- Wait for fling effect
     task.wait(0.5)
     
-    -- Teleport back to original position
     targetRoot.CFrame = CFrame.new(originalPos)
-    
-    -- Clean up
     bodyVelocity:Destroy()
     
     return true
 end
 
 -- ============================================
--- AIMLOCK (MURDERER ONLY - TORSO)
+-- AIMLOCK (MURDERER ONLY)
 -- ============================================
 local aimlockConnection = nil
 
@@ -404,7 +499,7 @@ local function updateAimlock()
     if onScreen then
         local deltaX = vector.X - mouse.X
         local deltaY = vector.Y - mouse.Y
-        local smoothFactor = 0.3
+        local smoothFactor = 0.35
         mousemoverel(deltaX * smoothFactor, deltaY * smoothFactor)
     end
 end
@@ -461,7 +556,7 @@ local function createFOVCircle()
     fovCircle = Instance.new("Frame")
     fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
     fovCircle.Position = UDim2.new(0.5, -fovRadius, 0.5, -fovRadius)
-    fovCircle.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    fovCircle.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
     fovCircle.BackgroundTransparency = 0.9
     fovCircle.BorderSizePixel = 0
     fovCircle.Visible = showFOVCircle
@@ -472,7 +567,7 @@ local function createFOVCircle()
     circleCorner.Parent = fovCircle
     
     local circleStroke = Instance.new("UIStroke")
-    circleStroke.Color = Color3.fromRGB(255, 0, 0)
+    circleStroke.Color = Color3.fromRGB(255, 50, 50)
     circleStroke.Thickness = 2
     circleStroke.Transparency = 0.5
     circleStroke.Parent = fovCircle
@@ -510,7 +605,7 @@ local function toggleFOVCircle()
 end
 
 -- ============================================
--- ROLE-BASED ESP (INVENTORY SCAN)
+-- ROLE-BASED ESP
 -- ============================================
 
 local function createESPForPlayer(player)
@@ -530,8 +625,8 @@ local function createESPForPlayer(player)
     local highlight = Instance.new("Highlight")
     highlight.Name = "YagamiESP"
     highlight.Parent = character
-    highlight.FillTransparency = 0.6
-    highlight.OutlineTransparency = 0.2
+    highlight.FillTransparency = 0.65
+    highlight.OutlineTransparency = 0.15
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     
     local role = getPlayerRole(player)
@@ -585,9 +680,6 @@ local function updateAllESP()
             end
         end
     end
-    
-    -- Update global role variables for notifications
-    updateRoleVariables()
 end
 
 local espUpdateConnection = nil
@@ -599,21 +691,12 @@ local function startESP()
     
     espUpdateConnection = RunService.Heartbeat:Connect(function()
         if espEnabled then
-            if not espEnabled.lastUpdate or tick() - espEnabled.lastUpdate >= 1 then
+            if not espEnabled.lastUpdate or tick() - espEnabled.lastUpdate >= 0.8 then
                 espEnabled.lastUpdate = tick()
                 updateAllESP()
             end
         end
     end)
-    
-    local function onCharacterAdded(player)
-        if espEnabled and player ~= plr then
-            task.wait(0.5)
-            if player.Character then
-                createESPForPlayer(player)
-            end
-        end
-    end
     
     local function onPlayerAdded(player)
         if espEnabled and player ~= plr then
@@ -625,7 +708,6 @@ local function startESP()
     end
     
     espEnabled.playerAddedConnection = Players.PlayerAdded:Connect(onPlayerAdded)
-    espEnabled.characterAddedConnection = Players.PlayerAdded:Connect(onCharacterAdded)
 end
 
 local function stopESP()
@@ -663,11 +745,8 @@ local function collectClosestCoin()
     if not rootPart then return end
     
     local coins = getCoins()
-    if #coins == 0 then 
-        return 
-    end
+    if #coins == 0 then return end
     
-    -- Find closest coin
     local closestCoin = nil
     local closestDist = math.huge
     
@@ -683,13 +762,9 @@ local function collectClosestCoin()
     
     if closestCoin and closestCoin.Parent then
         isCollectingCoin = true
-        
-        -- Fly to the coin position
         local success = flyToPosition(closestCoin.Position)
         
-        -- Attempt to collect the coin
         if success and closestCoin.Parent then
-            -- Try to trigger touch event
             local touchInterest = closestCoin:FindFirstChild("TouchInterest")
             if touchInterest then
                 local args = {character:FindFirstChild("HumanoidRootPart")}
@@ -698,7 +773,6 @@ local function collectClosestCoin()
                 end)
             end
             
-            -- Alternative: Move humanoid root part into coin
             if rootPart and closestCoin.Parent then
                 rootPart.CFrame = CFrame.new(closestCoin.Position)
             end
@@ -731,36 +805,52 @@ end
 -- LOADING SCREEN
 -- ============================================
 local loadingFrame = Instance.new("Frame")
-loadingFrame.Size = UDim2.new(0, 450, 0, 250)
-loadingFrame.Position = UDim2.new(0.5, -225, 0.5, -125)
-loadingFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-loadingFrame.BackgroundTransparency = 0.15
+loadingFrame.Size = UDim2.new(0, 500, 0, 300)
+loadingFrame.Position = UDim2.new(0.5, -250, 0.5, -150)
+loadingFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+loadingFrame.BackgroundTransparency = 0.05
 loadingFrame.BorderSizePixel = 0
 loadingFrame.Parent = screenGui
 
 local loadingCorner = Instance.new("UICorner")
-loadingCorner.CornerRadius = UDim.new(0, 12)
+loadingCorner.CornerRadius = UDim.new(0, 20)
 loadingCorner.Parent = loadingFrame
 
-local loadingStroke = Instance.new("UIStroke")
-loadingStroke.Color = Color3.fromRGB(0, 0, 0)
-loadingStroke.Thickness = 2
-loadingStroke.Parent = loadingFrame
+local loadingGlow = Instance.new("Frame")
+loadingGlow.Size = UDim2.new(1, 0, 1, 0)
+loadingGlow.BackgroundColor3 = Color3.fromRGB(100, 50, 150)
+loadingGlow.BackgroundTransparency = 0.95
+loadingGlow.BorderSizePixel = 0
+loadingGlow.Parent = loadingFrame
+
+local loadingGlowCorner = Instance.new("UICorner")
+loadingGlowCorner.CornerRadius = UDim.new(0, 20)
+loadingGlowCorner.Parent = loadingGlow
 
 local loadingTitle = Instance.new("TextLabel")
-loadingTitle.Size = UDim2.new(1, 0, 0, 40)
-loadingTitle.Position = UDim2.new(0, 0, 0, 15)
+loadingTitle.Size = UDim2.new(1, 0, 0, 60)
+loadingTitle.Position = UDim2.new(0, 0, 0, 20)
 loadingTitle.BackgroundTransparency = 1
 loadingTitle.Text = "YAGAMI HUB"
 loadingTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-loadingTitle.TextSize = 28
+loadingTitle.TextSize = 36
 loadingTitle.Font = retroFont
 loadingTitle.Parent = loadingFrame
 
+local loadingSub = Instance.new("TextLabel")
+loadingSub.Size = UDim2.new(1, 0, 0, 30)
+loadingSub.Position = UDim2.new(0, 0, 0, 80)
+loadingSub.BackgroundTransparency = 1
+loadingSub.Text = "MURDER MYSTERY 2"
+loadingSub.TextColor3 = Color3.fromRGB(150, 150, 200)
+loadingSub.TextSize = 16
+loadingSub.Font = modernFont
+loadingSub.Parent = loadingFrame
+
 local progressBg = Instance.new("Frame")
-progressBg.Size = UDim2.new(0.8, 0, 0, 10)
-progressBg.Position = UDim2.new(0.1, 0, 0.5, 0)
-progressBg.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+progressBg.Size = UDim2.new(0.7, 0, 0, 8)
+progressBg.Position = UDim2.new(0.15, 0, 0.55, 0)
+progressBg.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
 progressBg.BorderSizePixel = 0
 progressBg.Parent = loadingFrame
 
@@ -770,7 +860,7 @@ progressBgCorner.Parent = progressBg
 
 local progressFill = Instance.new("Frame")
 progressFill.Size = UDim2.new(0, 0, 1, 0)
-progressFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+progressFill.BackgroundColor3 = Color3.fromRGB(150, 50, 200)
 progressFill.BorderSizePixel = 0
 progressFill.Parent = progressBg
 
@@ -779,57 +869,63 @@ progressFillCorner.CornerRadius = UDim.new(1, 0)
 progressFillCorner.Parent = progressFill
 
 local percentText = Instance.new("TextLabel")
-percentText.Size = UDim2.new(0.3, 0, 0, 30)
+percentText.Size = UDim2.new(0.3, 0, 0, 40)
 percentText.Position = UDim2.new(0.35, 0, 0.65, 0)
 percentText.BackgroundTransparency = 1
 percentText.Text = "0%"
-percentText.TextColor3 = Color3.fromRGB(255, 255, 255)
-percentText.TextSize = 20
+percentText.TextColor3 = Color3.fromRGB(200, 200, 255)
+percentText.TextSize = 24
 percentText.Font = retroFont
 percentText.Parent = loadingFrame
 
 local subText = Instance.new("TextLabel")
-subText.Size = UDim2.new(0.9, 0, 0, 25)
+subText.Size = UDim2.new(0.9, 0, 0, 30)
 subText.Position = UDim2.new(0.05, 0, 0.78, 0)
 subText.BackgroundTransparency = 1
 subText.Text = "Initializing..."
-subText.TextColor3 = Color3.fromRGB(200, 200, 200)
+subText.TextColor3 = Color3.fromRGB(150, 150, 180)
 subText.TextSize = 14
-subText.Font = retroFont
+subText.Font = modernFont
 subText.Parent = loadingFrame
 
 local accessText = Instance.new("TextLabel")
 accessText.Size = UDim2.new(0.6, 0, 0, 40)
-accessText.Position = UDim2.new(0.2, 0, 0.85, 0)
+accessText.Position = UDim2.new(0.2, 0, 0.88, 0)
 accessText.BackgroundTransparency = 1
-accessText.Text = "ACCESS GRANTED."
-accessText.TextColor3 = Color3.fromRGB(0, 255, 100)
+accessText.Text = "ACCESS GRANTED"
+accessText.TextColor3 = Color3.fromRGB(100, 255, 150)
 accessText.TextSize = 18
 accessText.Font = retroFont
 accessText.Visible = false
 accessText.Parent = loadingFrame
 
 -- ============================================
--- MAIN GUI
+-- MAIN GUI (MODERN DESIGN)
 -- ============================================
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 800, 0, 500)
-mainFrame.Position = UDim2.new(0.5, -400, 0.5, -250)
-mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-mainFrame.BackgroundTransparency = 0.15
+mainFrame.Size = UDim2.new(0, 900, 0, 600)
+mainFrame.Position = UDim2.new(0.5, -450, 0.5, -300)
+mainFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 16)
+mainFrame.BackgroundTransparency = 0.08
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
 mainFrame.Parent = screenGui
 mainFrame.ClipsDescendants = true
 
 local mainCorner = Instance.new("UICorner")
-mainCorner.CornerRadius = UDim.new(0, 12)
+mainCorner.CornerRadius = UDim.new(0, 20)
 mainCorner.Parent = mainFrame
 
-local mainStroke = Instance.new("UIStroke")
-mainStroke.Color = Color3.fromRGB(0, 0, 0)
-mainStroke.Thickness = 2
-mainStroke.Parent = mainFrame
+local mainGlow = Instance.new("Frame")
+mainGlow.Size = UDim2.new(1, 0, 1, 0)
+mainGlow.BackgroundColor3 = Color3.fromRGB(100, 50, 200)
+mainGlow.BackgroundTransparency = 0.95
+mainGlow.BorderSizePixel = 0
+mainGlow.Parent = mainFrame
+
+local mainGlowCorner = Instance.new("UICorner")
+mainGlowCorner.CornerRadius = UDim.new(0, 20)
+mainGlowCorner.Parent = mainGlow
 
 -- ============================================
 -- MOON RAIN VFX
@@ -841,24 +937,24 @@ moonRainContainer.Parent = mainFrame
 
 local moonRainItems = {}
 
-for i = 1, 30 do
+for i = 1, 40 do
     local moonLabel = Instance.new("TextLabel")
-    moonLabel.Size = UDim2.new(0, 30, 0, 30)
+    moonLabel.Size = UDim2.new(0, 35, 0, 35)
     moonLabel.BackgroundTransparency = 1
     moonLabel.Text = "🌙"
-    moonLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-    moonLabel.TextSize = math.random(20, 35)
-    moonLabel.TextTransparency = 0.35
+    moonLabel.TextColor3 = Color3.fromRGB(180, 180, 255)
+    moonLabel.TextSize = math.random(22, 38)
+    moonLabel.TextTransparency = 0.4
     moonLabel.Font = retroFont
     moonLabel.Parent = moonRainContainer
     
-    local startX = math.random(0, 800)
-    local startY = math.random(-500, -50)
+    local startX = math.random(0, 900)
+    local startY = math.random(-600, -50)
     moonLabel.Position = UDim2.new(0, startX, 0, startY)
     
     table.insert(moonRainItems, {
         label = moonLabel,
-        speed = math.random(30, 60),
+        speed = math.random(35, 70),
         x = startX,
         y = startY
     })
@@ -869,9 +965,9 @@ task.spawn(function()
         for _, item in pairs(moonRainItems) do
             if item and item.label then
                 item.y = item.y + item.speed
-                if item.y > 550 then
+                if item.y > 650 then
                     item.y = -50
-                    item.x = math.random(0, 800)
+                    item.x = math.random(0, 900)
                     item.label.Position = UDim2.new(0, item.x, 0, item.y)
                 else
                     item.label.Position = UDim2.new(0, item.x, 0, item.y)
@@ -887,15 +983,15 @@ end)
 -- TITLE BAR
 -- ============================================
 local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 45)
+titleBar.Size = UDim2.new(1, 0, 0, 55)
 titleBar.Position = UDim2.new(0, 0, 0, 0)
-titleBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-titleBar.BackgroundTransparency = 0.2
+titleBar.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+titleBar.BackgroundTransparency = 0.3
 titleBar.BorderSizePixel = 0
 titleBar.Parent = mainFrame
 
 local titleBarCorner = Instance.new("UICorner")
-titleBarCorner.CornerRadius = UDim.new(0, 12)
+titleBarCorner.CornerRadius = UDim.new(0, 20)
 titleBarCorner.Parent = titleBar
 
 local titleText = Instance.new("TextLabel")
@@ -904,58 +1000,69 @@ titleText.Position = UDim2.new(0.05, 0, 0, 0)
 titleText.BackgroundTransparency = 1
 titleText.Text = "YAGAMI HUB"
 titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleText.TextSize = 22
+titleText.TextSize = 26
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.Font = retroFont
 titleText.Parent = titleBar
 
+local titleSub = Instance.new("TextLabel")
+titleSub.Size = UDim2.new(0.5, 0, 0.5, 0)
+titleSub.Position = UDim2.new(0.05, 0, 0.5, 0)
+titleSub.BackgroundTransparency = 1
+titleSub.Text = "MM2 EDITION"
+titleSub.TextColor3 = Color3.fromRGB(150, 150, 200)
+titleSub.TextSize = 14
+titleSub.TextXAlignment = Enum.TextXAlignment.Left
+titleSub.Font = modernFont
+titleSub.Parent = titleBar
+
 local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 40, 1, 0)
-toggleBtn.Position = UDim2.new(1, -45, 0, 0)
+toggleBtn.Size = UDim2.new(0, 45, 0, 45)
+toggleBtn.Position = UDim2.new(1, -55, 0, 5)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 35, 35)
-toggleBtn.BackgroundTransparency = 0.2
+toggleBtn.BackgroundTransparency = 0.3
 toggleBtn.BorderSizePixel = 0
-toggleBtn.Text = "X"
+toggleBtn.Text = "✕"
 toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleBtn.TextSize = 20
+toggleBtn.TextSize = 22
 toggleBtn.Font = retroFont
 toggleBtn.Parent = titleBar
 
 local toggleCorner = Instance.new("UICorner")
-toggleCorner.CornerRadius = UDim.new(0, 8)
+toggleCorner.CornerRadius = UDim.new(0, 12)
 toggleCorner.Parent = toggleBtn
 
 -- ============================================
--- SIDE NAVIGATION
+-- SIDE NAVIGATION (MODERN)
 -- ============================================
 local navFrame = Instance.new("Frame")
-navFrame.Size = UDim2.new(0, 150, 1, -55)
-navFrame.Position = UDim2.new(1, -160, 0, 50)
-navFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-navFrame.BackgroundTransparency = 0.3
+navFrame.Size = UDim2.new(0, 180, 1, -65)
+navFrame.Position = UDim2.new(1, -190, 0, 60)
+navFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 22)
+navFrame.BackgroundTransparency = 0.4
 navFrame.BorderSizePixel = 0
 navFrame.Parent = mainFrame
 
 local navCorner = Instance.new("UICorner")
-navCorner.CornerRadius = UDim.new(0, 8)
+navCorner.CornerRadius = UDim.new(0, 12)
 navCorner.Parent = navFrame
 
 local contentFrame = Instance.new("Frame")
-contentFrame.Size = UDim2.new(1, -170, 1, -55)
-contentFrame.Position = UDim2.new(0, 10, 0, 50)
-contentFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-contentFrame.BackgroundTransparency = 0.3
+contentFrame.Size = UDim2.new(1, -200, 1, -65)
+contentFrame.Position = UDim2.new(0, 10, 0, 60)
+contentFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 22)
+contentFrame.BackgroundTransparency = 0.4
 contentFrame.BorderSizePixel = 0
 contentFrame.Parent = mainFrame
 
 local contentCorner = Instance.new("UICorner")
-contentCorner.CornerRadius = UDim.new(0, 8)
+contentCorner.CornerRadius = UDim.new(0, 12)
 contentCorner.Parent = contentFrame
 
 -- ============================================
 -- SECTION CONTENT CREATION
 -- ============================================
-local sections = {"Main", "Combat", "Auto-farm", "Visuals", "Settings"}
+local sections = {"MAIN", "COMBAT", "AUTO-FARM", "VISUALS", "SETTINGS"}
 local sectionButtons = {}
 local activeSection = nil
 
@@ -972,248 +1079,124 @@ local function createSectionContent(sectionName)
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    scrollFrame.ScrollBarThickness = 6
+    scrollFrame.ScrollBarThickness = 4
+    scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 50, 200)
     scrollFrame.Parent = contentFrame
     
     local uiList = Instance.new("UIListLayout")
-    uiList.Padding = UDim.new(0, 10)
+    uiList.Padding = UDim.new(0, 15)
     uiList.SortOrder = Enum.SortOrder.LayoutOrder
     uiList.Parent = scrollFrame
     
     local sectionTitle = Instance.new("TextLabel")
-    sectionTitle.Size = UDim2.new(1, 0, 0, 40)
+    sectionTitle.Size = UDim2.new(1, 0, 0, 50)
     sectionTitle.BackgroundTransparency = 1
     sectionTitle.Text = sectionName
     sectionTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    sectionTitle.TextSize = 24
+    sectionTitle.TextSize = 28
     sectionTitle.Font = retroFont
     sectionTitle.TextXAlignment = Enum.TextXAlignment.Center
     sectionTitle.Parent = scrollFrame
     
-    if sectionName == "Main" then
-        local roleFrame = Instance.new("Frame")
-        roleFrame.Size = UDim2.new(1, -20, 0, 100)
-        roleFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        roleFrame.BackgroundTransparency = 0.3
-        roleFrame.BorderSizePixel = 0
-        roleFrame.Parent = scrollFrame
+    if sectionName == "MAIN" then
+        -- Role Card
+        local roleCard = Instance.new("Frame")
+        roleCard.Size = UDim2.new(1, -20, 0, 120)
+        roleCard.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+        roleCard.BackgroundTransparency = 0.4
+        roleCard.BorderSizePixel = 0
+        roleCard.Parent = scrollFrame
         
-        local roleCorner = Instance.new("UICorner")
-        roleCorner.CornerRadius = UDim.new(0, 8)
-        roleCorner.Parent = roleFrame
+        local roleCardCorner = Instance.new("UICorner")
+        roleCardCorner.CornerRadius = UDim.new(0, 12)
+        roleCardCorner.Parent = roleCard
         
         local roleText = Instance.new("TextLabel")
         roleText.Size = UDim2.new(1, 0, 1, 0)
         roleText.BackgroundTransparency = 1
-        roleText.Text = "Current Role: " .. currentRole .. "\nPress R to toggle GUI"
+        roleText.Text = "YOUR ROLE"
         roleText.TextColor3 = Color3.fromRGB(200, 200, 200)
-        roleText.TextSize = 16
-        roleText.Font = retroFont
-        roleText.TextWrapped = true
-        roleText.Parent = roleFrame
+        roleText.TextSize = 14
+        roleText.Font = modernFont
+        roleText.Parent = roleCard
         
-        -- Fling Murderer Button
-        local flingMurdererFrame = Instance.new("Frame")
-        flingMurdererFrame.Size = UDim2.new(1, -20, 0, 50)
-        flingMurdererFrame.Position = UDim2.new(0, 0, 0, 120)
-        flingMurdererFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        flingMurdererFrame.BackgroundTransparency = 0.3
-        flingMurdererFrame.BorderSizePixel = 0
-        flingMurdererFrame.Parent = scrollFrame
+        local roleValue = Instance.new("TextLabel")
+        roleValue.Size = UDim2.new(1, 0, 0, 40)
+        roleValue.Position = UDim2.new(0, 0, 0, 25)
+        roleValue.BackgroundTransparency = 1
+        roleValue.Text = currentRole:upper()
+        roleValue.TextColor3 = currentRole == "Murderer" and Color3.fromRGB(255, 80, 80) or (currentRole == "Sheriff" and Color3.fromRGB(80, 150, 255) or Color3.fromRGB(80, 255, 80))
+        roleValue.TextSize = 32
+        roleValue.Font = retroFont
+        roleValue.Parent = roleCard
+        
+        -- Fling Buttons
+        local flingMurdererBtn = Instance.new("TextButton")
+        flingMurdererBtn.Size = UDim2.new(0.48, 0, 0, 50)
+        flingMurdererBtn.Position = UDim2.new(0, 0, 0, 140)
+        flingMurdererBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+        flingMurdererBtn.BorderSizePixel = 0
+        flingMurdererBtn.Text = "🔪 FLING MURDERER"
+        flingMurdererBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        flingMurdererBtn.TextSize = 14
+        flingMurdererBtn.Font = retroFont
+        flingMurdererBtn.Parent = scrollFrame
         
         local flingMurdererCorner = Instance.new("UICorner")
-        flingMurdererCorner.CornerRadius = UDim.new(0, 8)
-        flingMurdererCorner.Parent = flingMurdererFrame
+        flingMurdererCorner.CornerRadius = UDim.new(0, 10)
+        flingMurdererCorner.Parent = flingMurdererBtn
         
-        local flingMurdererLabel = Instance.new("TextLabel")
-        flingMurdererLabel.Size = UDim2.new(0.6, 0, 1, 0)
-        flingMurdererLabel.Position = UDim2.new(0.05, 0, 0, 0)
-        flingMurdererLabel.BackgroundTransparency = 1
-        flingMurdererLabel.Text = "FLING MURDERER"
-        flingMurdererLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        flingMurdererLabel.TextSize = 16
-        flingMurdererLabel.TextXAlignment = Enum.TextXAlignment.Left
-        flingMurdererLabel.Font = retroFont
-        flingMurdererLabel.Parent = flingMurdererFrame
-        
-        local flingMurdererButton = Instance.new("TextButton")
-        flingMurdererButton.Size = UDim2.new(0, 100, 0, 35)
-        flingMurdererButton.Position = UDim2.new(0.7, 0, 0.5, -17.5)
-        flingMurdererButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-        flingMurdererButton.BorderSizePixel = 0
-        flingMurdererButton.Text = "FLING"
-        flingMurdererButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        flingMurdererButton.TextSize = 16
-        flingMurdererButton.Font = retroFont
-        flingMurdererButton.Parent = flingMurdererFrame
-        
-        local flingMurdererBtnCorner = Instance.new("UICorner")
-        flingMurdererBtnCorner.CornerRadius = UDim.new(0, 6)
-        flingMurdererBtnCorner.Parent = flingMurdererButton
-        
-        -- Fling Sheriff Button
-        local flingSheriffFrame = Instance.new("Frame")
-        flingSheriffFrame.Size = UDim2.new(1, -20, 0, 50)
-        flingSheriffFrame.Position = UDim2.new(0, 0, 0, 180)
-        flingSheriffFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        flingSheriffFrame.BackgroundTransparency = 0.3
-        flingSheriffFrame.BorderSizePixel = 0
-        flingSheriffFrame.Parent = scrollFrame
+        local flingSheriffBtn = Instance.new("TextButton")
+        flingSheriffBtn.Size = UDim2.new(0.48, 0, 0, 50)
+        flingSheriffBtn.Position = UDim2.new(0.52, 0, 0, 140)
+        flingSheriffBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 150)
+        flingSheriffBtn.BorderSizePixel = 0
+        flingSheriffBtn.Text = "🔫 FLING SHERIFF"
+        flingSheriffBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        flingSheriffBtn.TextSize = 14
+        flingSheriffBtn.Font = retroFont
+        flingSheriffBtn.Parent = scrollFrame
         
         local flingSheriffCorner = Instance.new("UICorner")
-        flingSheriffCorner.CornerRadius = UDim.new(0, 8)
-        flingSheriffCorner.Parent = flingSheriffFrame
+        flingSheriffCorner.CornerRadius = UDim.new(0, 10)
+        flingSheriffCorner.Parent = flingSheriffBtn
         
-        local flingSheriffLabel = Instance.new("TextLabel")
-        flingSheriffLabel.Size = UDim2.new(0.6, 0, 1, 0)
-        flingSheriffLabel.Position = UDim2.new(0.05, 0, 0, 0)
-        flingSheriffLabel.BackgroundTransparency = 1
-        flingSheriffLabel.Text = "FLING SHERIFF"
-        flingSheriffLabel.TextColor3 = Color3.fromRGB(100, 100, 255)
-        flingSheriffLabel.TextSize = 16
-        flingSheriffLabel.TextXAlignment = Enum.TextXAlignment.Left
-        flingSheriffLabel.Font = retroFont
-        flingSheriffLabel.Parent = flingSheriffFrame
-        
-        local flingSheriffButton = Instance.new("TextButton")
-        flingSheriffButton.Size = UDim2.new(0, 100, 0, 35)
-        flingSheriffButton.Position = UDim2.new(0.7, 0, 0.5, -17.5)
-        flingSheriffButton.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
-        flingSheriffButton.BorderSizePixel = 0
-        flingSheriffButton.Text = "FLING"
-        flingSheriffButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        flingSheriffButton.TextSize = 16
-        flingSheriffButton.Font = retroFont
-        flingSheriffButton.Parent = flingSheriffFrame
-        
-        local flingSheriffBtnCorner = Instance.new("UICorner")
-        flingSheriffBtnCorner.CornerRadius = UDim.new(0, 6)
-        flingSheriffBtnCorner.Parent = flingSheriffButton
-        
-        -- Notification Button
-        local notifFrame = Instance.new("Frame")
-        notifFrame.Size = UDim2.new(1, -20, 0, 50)
-        notifFrame.Position = UDim2.new(0, 0, 0, 240)
-        notifFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        notifFrame.BackgroundTransparency = 0.3
-        notifFrame.BorderSizePixel = 0
-        notifFrame.Parent = scrollFrame
-        
-        local notifCorner = Instance.new("UICorner")
-        notifCorner.CornerRadius = UDim.new(0, 8)
-        notifCorner.Parent = notifFrame
-        
-        local notifLabel = Instance.new("TextLabel")
-        notifLabel.Size = UDim2.new(0.6, 0, 1, 0)
-        notifLabel.Position = UDim2.new(0.05, 0, 0, 0)
-        notifLabel.BackgroundTransparency = 1
-        notifLabel.Text = "SHOW ROLES NOTIFICATION"
-        notifLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
-        notifLabel.TextSize = 16
-        notifLabel.TextXAlignment = Enum.TextXAlignment.Left
-        notifLabel.Font = retroFont
-        notifLabel.Parent = notifFrame
-        
-        local notifButton = Instance.new("TextButton")
-        notifButton.Size = UDim2.new(0, 100, 0, 35)
-        notifButton.Position = UDim2.new(0.7, 0, 0.5, -17.5)
-        notifButton.BackgroundColor3 = Color3.fromRGB(100, 100, 0)
-        notifButton.BorderSizePixel = 0
-        notifButton.Text = "NOTIFY"
-        notifButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        notifButton.TextSize = 16
-        notifButton.Font = retroFont
-        notifButton.Parent = notifFrame
-        
-        local notifBtnCorner = Instance.new("UICorner")
-        notifBtnCorner.CornerRadius = UDim.new(0, 6)
-        notifBtnCorner.Parent = notifButton
-        
-        flingMurdererButton.MouseButton1Click:Connect(function()
+        flingMurdererBtn.MouseButton1Click:Connect(function()
             local murderer = getMurderer()
             if murderer then
                 flingPlayer(murderer)
-                local statusText = Instance.new("TextLabel")
-                statusText.Size = UDim2.new(0.8, 0, 0, 30)
-                statusText.Position = UDim2.new(0.1, 0, 0, 300)
-                statusText.BackgroundTransparency = 1
-                statusText.Text = "✅ Flinged Murderer: " .. murderer.Name
-                statusText.TextColor3 = Color3.fromRGB(0, 255, 0)
-                statusText.TextSize = 14
-                statusText.Font = retroFont
-                statusText.Parent = scrollFrame
-                task.wait(2)
-                statusText:Destroy()
-            else
-                local statusText = Instance.new("TextLabel")
-                statusText.Size = UDim2.new(0.8, 0, 0, 30)
-                statusText.Position = UDim2.new(0.1, 0, 0, 300)
-                statusText.BackgroundTransparency = 1
-                statusText.Text = "❌ No Murderer found!"
-                statusText.TextColor3 = Color3.fromRGB(255, 0, 0)
-                statusText.TextSize = 14
-                statusText.Font = retroFont
-                statusText.Parent = scrollFrame
-                task.wait(2)
-                statusText:Destroy()
             end
         end)
         
-        flingSheriffButton.MouseButton1Click:Connect(function()
+        flingSheriffBtn.MouseButton1Click:Connect(function()
             local sheriff = getSheriff()
             if sheriff then
                 flingPlayer(sheriff)
-                local statusText = Instance.new("TextLabel")
-                statusText.Size = UDim2.new(0.8, 0, 0, 30)
-                statusText.Position = UDim2.new(0.1, 0, 0, 300)
-                statusText.BackgroundTransparency = 1
-                statusText.Text = "✅ Flinged Sheriff: " .. sheriff.Name
-                statusText.TextColor3 = Color3.fromRGB(0, 255, 0)
-                statusText.TextSize = 14
-                statusText.Font = retroFont
-                statusText.Parent = scrollFrame
-                task.wait(2)
-                statusText:Destroy()
-            else
-                local statusText = Instance.new("TextLabel")
-                statusText.Size = UDim2.new(0.8, 0, 0, 30)
-                statusText.Position = UDim2.new(0.1, 0, 0, 300)
-                statusText.BackgroundTransparency = 1
-                statusText.Text = "❌ No Sheriff found!"
-                statusText.TextColor3 = Color3.fromRGB(255, 0, 0)
-                statusText.TextSize = 14
-                statusText.Font = retroFont
-                statusText.Parent = scrollFrame
-                task.wait(2)
-                statusText:Destroy()
             end
-        end)
-        
-        notifButton.MouseButton1Click:Connect(function()
-            showRoleNotification()
         end)
         
         task.spawn(function()
             while scrollFrame and scrollFrame.Parent do
                 updateSelfRole()
                 updateRoleVariables()
-                roleText.Text = "Current Role: " .. currentRole .. "\nPress R to toggle GUI\n\nMurderer: " .. (currentMurderer and currentMurderer.Name or "None") .. "\nSheriff: " .. (currentSheriff and currentSheriff.Name or "None")
-                task.wait(1)
+                roleValue.Text = currentRole:upper()
+                roleValue.TextColor3 = currentRole == "Murderer" and Color3.fromRGB(255, 80, 80) or (currentRole == "Sheriff" and Color3.fromRGB(80, 150, 255) or Color3.fromRGB(80, 255, 80))
+                task.wait(0.5)
             end
         end)
         
-    elseif sectionName == "Combat" then
-        -- Silent Aim Toggle
-        local silentFrame = Instance.new("Frame")
-        silentFrame.Size = UDim2.new(1, -20, 0, 50)
-        silentFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        silentFrame.BackgroundTransparency = 0.3
-        silentFrame.BorderSizePixel = 0
-        silentFrame.Parent = scrollFrame
+    elseif sectionName == "COMBAT" then
+        -- Silent Aim Card
+        local silentCard = Instance.new("Frame")
+        silentCard.Size = UDim2.new(1, -20, 0, 60)
+        silentCard.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+        silentCard.BackgroundTransparency = 0.4
+        silentCard.BorderSizePixel = 0
+        silentCard.Parent = scrollFrame
         
-        local silentCorner = Instance.new("UICorner")
-        silentCorner.CornerRadius = UDim.new(0, 8)
-        silentCorner.Parent = silentFrame
+        local silentCardCorner = Instance.new("UICorner")
+        silentCardCorner.CornerRadius = UDim.new(0, 12)
+        silentCardCorner.Parent = silentCard
         
         local silentLabel = Instance.new("TextLabel")
         silentLabel.Size = UDim2.new(0.6, 0, 1, 0)
@@ -1222,37 +1205,37 @@ local function createSectionContent(sectionName)
         silentLabel.Text = "UNIVERSAL SILENT AIM"
         silentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         silentLabel.TextSize = 16
-        silentLabel.TextXAlignment = Enum.TextXAlignment.Left
         silentLabel.Font = retroFont
-        silentLabel.Parent = silentFrame
+        silentLabel.TextXAlignment = Enum.TextXAlignment.Left
+        silentLabel.Parent = silentCard
         
-        local silentButton = Instance.new("TextButton")
-        silentButton.Size = UDim2.new(0, 80, 0, 35)
-        silentButton.Position = UDim2.new(0.8, 0, 0.5, -17.5)
-        silentButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-        silentButton.BorderSizePixel = 0
-        silentButton.Text = "OFF"
-        silentButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        silentButton.TextSize = 16
-        silentButton.Font = retroFont
-        silentButton.Parent = silentFrame
+        local silentToggle = Instance.new("TextButton")
+        silentToggle.Size = UDim2.new(0, 80, 0, 40)
+        silentToggle.Position = UDim2.new(0.75, 0, 0.5, -20)
+        silentToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+        silentToggle.BorderSizePixel = 0
+        silentToggle.Text = "OFF"
+        silentToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        silentToggle.TextSize = 16
+        silentToggle.Font = retroFont
+        silentToggle.Parent = silentCard
         
-        local btnCorner = Instance.new("UICorner")
-        btnCorner.CornerRadius = UDim.new(0, 6)
-        btnCorner.Parent = silentButton
+        local silentToggleCorner = Instance.new("UICorner")
+        silentToggleCorner.CornerRadius = UDim.new(0, 8)
+        silentToggleCorner.Parent = silentToggle
         
-        -- AIMLOCK Toggle
-        local aimlockFrame = Instance.new("Frame")
-        aimlockFrame.Size = UDim2.new(1, -20, 0, 50)
-        aimlockFrame.Position = UDim2.new(0, 0, 0, 60)
-        aimlockFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        aimlockFrame.BackgroundTransparency = 0.3
-        aimlockFrame.BorderSizePixel = 0
-        aimlockFrame.Parent = scrollFrame
+        -- Aimlock Card
+        local aimlockCard = Instance.new("Frame")
+        aimlockCard.Size = UDim2.new(1, -20, 0, 60)
+        aimlockCard.Position = UDim2.new(0, 0, 0, 75)
+        aimlockCard.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+        aimlockCard.BackgroundTransparency = 0.4
+        aimlockCard.BorderSizePixel = 0
+        aimlockCard.Parent = scrollFrame
         
-        local aimlockCorner = Instance.new("UICorner")
-        aimlockCorner.CornerRadius = UDim.new(0, 8)
-        aimlockCorner.Parent = aimlockFrame
+        local aimlockCardCorner = Instance.new("UICorner")
+        aimlockCardCorner.CornerRadius = UDim.new(0, 12)
+        aimlockCardCorner.Parent = aimlockCard
         
         local aimlockLabel = Instance.new("TextLabel")
         aimlockLabel.Size = UDim2.new(0.6, 0, 1, 0)
@@ -1261,216 +1244,177 @@ local function createSectionContent(sectionName)
         aimlockLabel.Text = "AIMLOCK (MURDERER ONLY)"
         aimlockLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         aimlockLabel.TextSize = 16
-        aimlockLabel.TextXAlignment = Enum.TextXAlignment.Left
         aimlockLabel.Font = retroFont
-        aimlockLabel.Parent = aimlockFrame
+        aimlockLabel.TextXAlignment = Enum.TextXAlignment.Left
+        aimlockLabel.Parent = aimlockCard
         
-        local aimlockButton = Instance.new("TextButton")
-        aimlockButton.Size = UDim2.new(0, 80, 0, 35)
-        aimlockButton.Position = UDim2.new(0.8, 0, 0.5, -17.5)
-        aimlockButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-        aimlockButton.BorderSizePixel = 0
-        aimlockButton.Text = "OFF"
-        aimlockButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        aimlockButton.TextSize = 16
-        aimlockButton.Font = retroFont
-        aimlockButton.Parent = aimlockFrame
+        local aimlockToggle = Instance.new("TextButton")
+        aimlockToggle.Size = UDim2.new(0, 80, 0, 40)
+        aimlockToggle.Position = UDim2.new(0.75, 0, 0.5, -20)
+        aimlockToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+        aimlockToggle.BorderSizePixel = 0
+        aimlockToggle.Text = "OFF"
+        aimlockToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        aimlockToggle.TextSize = 16
+        aimlockToggle.Font = retroFont
+        aimlockToggle.Parent = aimlockCard
         
-        local aimlockBtnCorner = Instance.new("UICorner")
-        aimlockBtnCorner.CornerRadius = UDim.new(0, 6)
-        aimlockBtnCorner.Parent = aimlockButton
+        local aimlockToggleCorner = Instance.new("UICorner")
+        aimlockToggleCorner.CornerRadius = UDim.new(0, 8)
+        aimlockToggleCorner.Parent = aimlockToggle
         
-        -- FOV Option
-        local fovOptionFrame = Instance.new("Frame")
-        fovOptionFrame.Size = UDim2.new(1, -40, 0, 0)
-        fovOptionFrame.Position = UDim2.new(0, 20, 0, 120)
-        fovOptionFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
-        fovOptionFrame.BackgroundTransparency = 0.5
-        fovOptionFrame.BorderSizePixel = 0
-        fovOptionFrame.Visible = false
-        fovOptionFrame.ClipsDescendants = true
-        fovOptionFrame.Parent = scrollFrame
+        -- FOV Circle Card
+        local fovCard = Instance.new("Frame")
+        fovCard.Size = UDim2.new(1, -20, 0, 60)
+        fovCard.Position = UDim2.new(0, 0, 0, 150)
+        fovCard.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+        fovCard.BackgroundTransparency = 0.4
+        fovCard.BorderSizePixel = 0
+        fovCard.Parent = scrollFrame
         
-        local fovCorner = Instance.new("UICorner")
-        fovCorner.CornerRadius = UDim.new(0, 6)
-        fovCorner.Parent = fovOptionFrame
+        local fovCardCorner = Instance.new("UICorner")
+        fovCardCorner.CornerRadius = UDim.new(0, 12)
+        fovCardCorner.Parent = fovCard
         
         local fovLabel = Instance.new("TextLabel")
-        fovLabel.Size = UDim2.new(0.7, 0, 1, 0)
+        fovLabel.Size = UDim2.new(0.6, 0, 1, 0)
         fovLabel.Position = UDim2.new(0.05, 0, 0, 0)
         fovLabel.BackgroundTransparency = 1
-        fovLabel.Text = "Show Silent Aim FOV Circle"
-        fovLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-        fovLabel.TextSize = 14
-        fovLabel.TextXAlignment = Enum.TextXAlignment.Left
+        fovLabel.Text = "SHOW FOV CIRCLE"
+        fovLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        fovLabel.TextSize = 16
         fovLabel.Font = retroFont
-        fovLabel.Parent = fovOptionFrame
+        fovLabel.TextXAlignment = Enum.TextXAlignment.Left
+        fovLabel.Parent = fovCard
         
-        local fovButton = Instance.new("TextButton")
-        fovButton.Size = UDim2.new(0, 70, 0, 30)
-        fovButton.Position = UDim2.new(0.75, 0, 0.5, -15)
-        fovButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-        fovButton.BorderSizePixel = 0
-        fovButton.Text = "OFF"
-        fovButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        fovButton.TextSize = 14
-        fovButton.Font = retroFont
-        fovButton.Parent = fovOptionFrame
+        local fovToggle = Instance.new("TextButton")
+        fovToggle.Size = UDim2.new(0, 80, 0, 40)
+        fovToggle.Position = UDim2.new(0.75, 0, 0.5, -20)
+        fovToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+        fovToggle.BorderSizePixel = 0
+        fovToggle.Text = "OFF"
+        fovToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        fovToggle.TextSize = 16
+        fovToggle.Font = retroFont
+        fovToggle.Parent = fovCard
         
-        local fovBtnCorner = Instance.new("UICorner")
-        fovBtnCorner.CornerRadius = UDim.new(0, 6)
-        fovBtnCorner.Parent = fovButton
+        local fovToggleCorner = Instance.new("UICorner")
+        fovToggleCorner.CornerRadius = UDim.new(0, 8)
+        fovToggleCorner.Parent = fovToggle
         
-        local combatInfo = Instance.new("TextLabel")
-        combatInfo.Size = UDim2.new(1, -20, 0, 80)
-        combatInfo.Position = UDim2.new(0, 10, 0, 180)
-        combatInfo.BackgroundTransparency = 1
-        combatInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
-        combatInfo.TextSize = 14
-        combatInfo.Font = retroFont
-        combatInfo.TextWrapped = true
-        combatInfo.Text = "Silent Aim: Works with ANY weapon, locks onto closest player.\nAimlock: Locks onto MURDERER's torso only (best with Sheriff gun)."
-        combatInfo.Parent = scrollFrame
-        
-        local function expandOptions()
-            local expandTween = TweenService:Create(fovOptionFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-                Size = UDim2.new(1, -40, 0, 40)
-            })
-            fovOptionFrame.Visible = true
-            expandTween:Play()
-        end
-        
-        local function collapseOptions()
-            local collapseTween = TweenService:Create(fovOptionFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-                Size = UDim2.new(1, -40, 0, 0)
-            })
-            collapseTween:Play()
-            task.wait(0.2)
-            fovOptionFrame.Visible = false
-        end
-        
-        silentButton.MouseButton1Click:Connect(function()
+        silentToggle.MouseButton1Click:Connect(function()
             if silentAimEnabled then
                 silentAimEnabled = false
                 if silentAimConnection then silentAimConnection:Disconnect() end
-                silentButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-                silentButton.Text = "OFF"
-                collapseOptions()
+                silentToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+                silentToggle.Text = "OFF"
             else
                 silentAimEnabled = true
                 silentAimConnection = RunService.RenderStepped:Connect(updateSilentAim)
-                silentButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-                silentButton.Text = "ON"
-                expandOptions()
+                silentToggle.BackgroundColor3 = Color3.fromRGB(100, 50, 200)
+                silentToggle.Text = "ON"
             end
         end)
         
-        aimlockButton.MouseButton1Click:Connect(function()
+        aimlockToggle.MouseButton1Click:Connect(function()
             if aimlockEnabled then
                 aimlockEnabled = false
                 stopAimlock()
-                aimlockButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-                aimlockButton.Text = "OFF"
+                aimlockToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+                aimlockToggle.Text = "OFF"
             else
                 aimlockEnabled = true
                 startAimlock()
-                aimlockButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-                aimlockButton.Text = "ON"
+                aimlockToggle.BackgroundColor3 = Color3.fromRGB(100, 50, 200)
+                aimlockToggle.Text = "ON"
             end
         end)
         
-        fovButton.MouseButton1Click:Connect(function()
+        fovToggle.MouseButton1Click:Connect(function()
             toggleFOVCircle()
+            if showFOVCircle then
+                fovToggle.BackgroundColor3 = Color3.fromRGB(100, 50, 200)
+                fovToggle.Text = "ON"
+            else
+                fovToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+                fovToggle.Text = "OFF"
+            end
         end)
         
-    elseif sectionName == "Auto-farm" then
-        local autoFrame = Instance.new("Frame")
-        autoFrame.Size = UDim2.new(1, -20, 0, 50)
-        autoFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        autoFrame.BackgroundTransparency = 0.3
-        autoFrame.BorderSizePixel = 0
-        autoFrame.Parent = scrollFrame
+    elseif sectionName == "AUTO-FARM" then
+        local farmCard = Instance.new("Frame")
+        farmCard.Size = UDim2.new(1, -20, 0, 60)
+        farmCard.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+        farmCard.BackgroundTransparency = 0.4
+        farmCard.BorderSizePixel = 0
+        farmCard.Parent = scrollFrame
         
-        local autoCorner = Instance.new("UICorner")
-        autoCorner.CornerRadius = UDim.new(0, 8)
-        autoCorner.Parent = autoFrame
+        local farmCardCorner = Instance.new("UICorner")
+        farmCardCorner.CornerRadius = UDim.new(0, 12)
+        farmCardCorner.Parent = farmCard
         
-        local autoLabel = Instance.new("TextLabel")
-        autoLabel.Size = UDim2.new(0.6, 0, 1, 0)
-        autoLabel.Position = UDim2.new(0.05, 0, 0, 0)
-        autoLabel.BackgroundTransparency = 1
-        autoLabel.Text = "AUTO COLLECT COINS (FLY)"
-        autoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        autoLabel.TextSize = 16
-        autoLabel.TextXAlignment = Enum.TextXAlignment.Left
-        autoLabel.Font = retroFont
-        autoLabel.Parent = autoFrame
+        local farmLabel = Instance.new("TextLabel")
+        farmLabel.Size = UDim2.new(0.6, 0, 1, 0)
+        farmLabel.Position = UDim2.new(0.05, 0, 0, 0)
+        farmLabel.BackgroundTransparency = 1
+        farmLabel.Text = "AUTO COLLECT COINS"
+        farmLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        farmLabel.TextSize = 16
+        farmLabel.Font = retroFont
+        farmLabel.TextXAlignment = Enum.TextXAlignment.Left
+        farmLabel.Parent = farmCard
         
-        local autoButton = Instance.new("TextButton")
-        autoButton.Size = UDim2.new(0, 80, 0, 35)
-        autoButton.Position = UDim2.new(0.8, 0, 0.5, -17.5)
-        autoButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-        autoButton.BorderSizePixel = 0
-        autoButton.Text = "OFF"
-        autoButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        autoButton.TextSize = 16
-        autoButton.Font = retroFont
-        autoButton.Parent = autoFrame
+        local farmToggle = Instance.new("TextButton")
+        farmToggle.Size = UDim2.new(0, 80, 0, 40)
+        farmToggle.Position = UDim2.new(0.75, 0, 0.5, -20)
+        farmToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+        farmToggle.BorderSizePixel = 0
+        farmToggle.Text = "OFF"
+        farmToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        farmToggle.TextSize = 16
+        farmToggle.Font = retroFont
+        farmToggle.Parent = farmCard
         
-        local btnCorner2 = Instance.new("UICorner")
-        btnCorner2.CornerRadius = UDim.new(0, 6)
-        btnCorner2.Parent = autoButton
+        local farmToggleCorner = Instance.new("UICorner")
+        farmToggleCorner.CornerRadius = UDim.new(0, 8)
+        farmToggleCorner.Parent = farmToggle
         
-        local autoStatus = Instance.new("TextLabel")
-        autoStatus.Size = UDim2.new(1, -20, 0, 30)
-        autoStatus.Position = UDim2.new(0, 10, 0, 65)
-        autoStatus.BackgroundTransparency = 1
-        autoStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
-        autoStatus.TextSize = 14
-        autoStatus.Font = retroFont
-        autoStatus.Text = "Status: Idle"
-        autoStatus.Parent = scrollFrame
+        local farmInfo = Instance.new("TextLabel")
+        farmInfo.Size = UDim2.new(1, -20, 0, 60)
+        farmInfo.Position = UDim2.new(0, 10, 0, 80)
+        farmInfo.BackgroundTransparency = 1
+        farmInfo.TextColor3 = Color3.fromRGB(150, 150, 180)
+        farmInfo.TextSize = 13
+        farmInfo.Font = modernFont
+        farmInfo.TextWrapped = true
+        farmInfo.Text = "Flies through floors at speed 25 to collect coins.\nPrioritizes the closest coin first."
+        farmInfo.Parent = scrollFrame
         
-        local autoInfo = Instance.new("TextLabel")
-        autoInfo.Size = UDim2.new(1, -20, 0, 100)
-        autoInfo.Position = UDim2.new(0, 10, 0, 105)
-        autoInfo.BackgroundTransparency = 1
-        autoInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
-        autoInfo.TextSize = 14
-        autoInfo.Font = retroFont
-        autoInfo.TextWrapped = true
-        autoInfo.Text = "Auto collects coins that spawn on the ground. FLYS through floors at speed 25 to reach coins. Prioritizes the closest coin first.\n\nNote: Works with any coin collectible in the game."
-        autoInfo.Parent = scrollFrame
-        
-        autoButton.MouseButton1Click:Connect(function()
+        farmToggle.MouseButton1Click:Connect(function()
             if autoCollectEnabled then
                 autoCollectEnabled = false
                 stopAutoCollect()
-                autoButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-                autoButton.Text = "OFF"
-                autoStatus.Text = "Status: Idle"
-                autoStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
+                farmToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+                farmToggle.Text = "OFF"
             else
                 autoCollectEnabled = true
                 startAutoCollect()
-                autoButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-                autoButton.Text = "ON"
-                autoStatus.Text = "Status: Flying to collect coins..."
-                autoStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
+                farmToggle.BackgroundColor3 = Color3.fromRGB(100, 50, 200)
+                farmToggle.Text = "ON"
             end
         end)
         
-    elseif sectionName == "Visuals" then
-        local espFrame = Instance.new("Frame")
-        espFrame.Size = UDim2.new(1, -20, 0, 50)
-        espFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        espFrame.BackgroundTransparency = 0.3
-        espFrame.BorderSizePixel = 0
-        espFrame.Parent = scrollFrame
+    elseif sectionName == "VISUALS" then
+        local espCard = Instance.new("Frame")
+        espCard.Size = UDim2.new(1, -20, 0, 60)
+        espCard.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+        espCard.BackgroundTransparency = 0.4
+        espCard.BorderSizePixel = 0
+        espCard.Parent = scrollFrame
         
-        local espCorner = Instance.new("UICorner")
-        espCorner.CornerRadius = UDim.new(0, 8)
-        espCorner.Parent = espFrame
+        local espCardCorner = Instance.new("UICorner")
+        espCardCorner.CornerRadius = UDim.new(0, 12)
+        espCardCorner.Parent = espCard
         
         local espLabel = Instance.new("TextLabel")
         espLabel.Size = UDim2.new(0.6, 0, 1, 0)
@@ -1479,70 +1423,81 @@ local function createSectionContent(sectionName)
         espLabel.Text = "ROLE-BASED ESP"
         espLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         espLabel.TextSize = 16
-        espLabel.TextXAlignment = Enum.TextXAlignment.Left
         espLabel.Font = retroFont
-        espLabel.Parent = espFrame
+        espLabel.TextXAlignment = Enum.TextXAlignment.Left
+        espLabel.Parent = espCard
         
-        local espButton = Instance.new("TextButton")
-        espButton.Size = UDim2.new(0, 80, 0, 35)
-        espButton.Position = UDim2.new(0.8, 0, 0.5, -17.5)
-        espButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-        espButton.BorderSizePixel = 0
-        espButton.Text = "OFF"
-        espButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        espButton.TextSize = 16
-        espButton.Font = retroFont
-        espButton.Parent = espFrame
+        local espToggle = Instance.new("TextButton")
+        espToggle.Size = UDim2.new(0, 80, 0, 40)
+        espToggle.Position = UDim2.new(0.75, 0, 0.5, -20)
+        espToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+        espToggle.BorderSizePixel = 0
+        espToggle.Text = "OFF"
+        espToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        espToggle.TextSize = 16
+        espToggle.Font = retroFont
+        espToggle.Parent = espCard
         
-        local espBtnCorner = Instance.new("UICorner")
-        espBtnCorner.CornerRadius = UDim.new(0, 6)
-        espBtnCorner.Parent = espButton
+        local espToggleCorner = Instance.new("UICorner")
+        espToggleCorner.CornerRadius = UDim.new(0, 8)
+        espToggleCorner.Parent = espToggle
         
         local espInfo = Instance.new("TextLabel")
-        espInfo.Size = UDim2.new(1, -20, 0, 120)
-        espInfo.Position = UDim2.new(0, 10, 0, 70)
+        espInfo.Size = UDim2.new(1, -20, 0, 100)
+        espInfo.Position = UDim2.new(0, 10, 0, 80)
         espInfo.BackgroundTransparency = 1
-        espInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
-        espInfo.TextSize = 14
-        espInfo.Font = retroFont
+        espInfo.TextColor3 = Color3.fromRGB(150, 150, 180)
+        espInfo.TextSize = 13
+        espInfo.Font = modernFont
         espInfo.TextWrapped = true
-        espInfo.Text = "Role-Based ESP (Scans Inventory):\n🟢 Innocent = Green\n🔴 Murderer = Red\n🔵 Sheriff = Blue\n\nDetects roles by scanning backpack/character, works even when weapon isn't held. Updates every second."
+        espInfo.Text = "🔴 MURDERER = Red\n🔵 SHERIFF = Blue\n🟢 INNOCENT = Green\n\nScans inventory to detect roles (works even when not holding weapon)."
         espInfo.Parent = scrollFrame
         
-        espButton.MouseButton1Click:Connect(function()
+        espToggle.MouseButton1Click:Connect(function()
             if espEnabled then
                 espEnabled = false
                 stopESP()
-                espButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-                espButton.Text = "OFF"
+                espToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+                espToggle.Text = "OFF"
             else
                 espEnabled = true
                 startESP()
-                espButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-                espButton.Text = "ON"
+                espToggle.BackgroundColor3 = Color3.fromRGB(100, 50, 200)
+                espToggle.Text = "ON"
             end
         end)
         
-    elseif sectionName == "Settings" then
+    elseif sectionName == "SETTINGS" then
+        local settingsInfo = Instance.new("TextLabel")
+        settingsInfo.Size = UDim2.new(1, -20, 0, 120)
+        settingsInfo.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+        settingsInfo.BackgroundTransparency = 0.4
+        settingsInfo.BorderSizePixel = 0
+        settingsInfo.Parent = scrollFrame
+        
+        local settingsInfoCorner = Instance.new("UICorner")
+        settingsInfoCorner.CornerRadius = UDim.new(0, 12)
+        settingsInfoCorner.Parent = settingsInfo
+        
         local settingsText = Instance.new("TextLabel")
-        settingsText.Size = UDim2.new(1, 0, 0, 150)
+        settingsText.Size = UDim2.new(1, 0, 1, 0)
         settingsText.BackgroundTransparency = 1
-        settingsText.TextColor3 = Color3.fromRGB(200, 200, 200)
-        settingsText.TextSize = 16
-        settingsText.Font = retroFont
+        settingsText.TextColor3 = Color3.fromRGB(200, 200, 220)
+        settingsText.TextSize = 14
+        settingsText.Font = modernFont
         settingsText.TextWrapped = true
-        settingsText.Text = "Settings\n\n- GUI Settings: Press R to toggle\n- Keybinds: R to reopen GUI\n- Save Config: COMING SOON\n- Load Config: COMING SOON"
-        settingsText.Parent = scrollFrame
+        settingsText.Text = "⚙️ SETTINGS\n\n• Press R to toggle GUI\n• Drag title bar to move\n• GUI is fully customizable"
+        settingsText.Parent = settingsInfo
     end
     
     local function updateCanvas()
-        local totalHeight = 0
+        local totalHeight = 20
         for _, child in pairs(scrollFrame:GetChildren()) do
-            if child:IsA("GuiObject") and child ~= scrollFrame then
-                totalHeight = totalHeight + child.Size.Y.Offset + (uiList.Padding.Offset or 10)
+            if child:IsA("GuiObject") and child ~= scrollFrame and child.Name ~= "UIListLayout" then
+                totalHeight = totalHeight + child.Size.Y.Offset + 15
             end
         end
-        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight + 20)
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight + 50)
     end
     
     uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
@@ -1552,39 +1507,39 @@ end
 
 for i, sectionName in ipairs(sections) do
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9, 0, 0, 45)
-    btn.Position = UDim2.new(0.05, 0, 0, (i-1) * 55 + 10)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 55)
-    btn.BackgroundTransparency = 0.2
+    btn.Size = UDim2.new(0.85, 0, 0, 45)
+    btn.Position = UDim2.new(0.075, 0, 0, (i-1) * 55 + 15)
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 45)
+    btn.BackgroundTransparency = 0.3
     btn.BorderSizePixel = 0
     btn.Text = sectionName
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 16
+    btn.TextColor3 = Color3.fromRGB(220, 220, 255)
+    btn.TextSize = 15
     btn.Font = retroFont
     btn.Parent = navFrame
     
     local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.CornerRadius = UDim.new(0, 8)
     btnCorner.Parent = btn
     
     btn.MouseEnter:Connect(function()
         if activeSection ~= btn then
-            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+            btn.BackgroundColor3 = Color3.fromRGB(45, 45, 70)
         end
     end)
     
     btn.MouseLeave:Connect(function()
         if activeSection ~= btn then
-            btn.BackgroundColor3 = Color3.fromRGB(30, 30, 55)
+            btn.BackgroundColor3 = Color3.fromRGB(25, 25, 45)
         end
     end)
     
     btn.MouseButton1Click:Connect(function()
         for _, b in pairs(sectionButtons) do
-            b.BackgroundColor3 = Color3.fromRGB(30, 30, 55)
-            b.TextColor3 = Color3.fromRGB(255, 255, 255)
+            b.BackgroundColor3 = Color3.fromRGB(25, 25, 45)
+            b.TextColor3 = Color3.fromRGB(220, 220, 255)
         end
-        btn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
+        btn.BackgroundColor3 = Color3.fromRGB(100, 50, 200)
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         activeSection = btn
         createSectionContent(sectionName)
@@ -1634,24 +1589,24 @@ local isMinimized = false
 local function toggleGUI()
     if isMinimized then
         local expandTween = TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 800, 0, 500)
+            Size = UDim2.new(0, 900, 0, 600)
         })
         expandTween:Play()
         navFrame.Visible = true
         contentFrame.Visible = true
         moonRainContainer.Visible = true
-        toggleBtn.Text = "X"
+        toggleBtn.Text = "✕"
         toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 35, 35)
         isMinimized = false
     else
         local shrinkTween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-            Size = UDim2.new(0, 200, 0, 45)
+            Size = UDim2.new(0, 220, 0, 55)
         })
         shrinkTween:Play()
         navFrame.Visible = false
         contentFrame.Visible = false
         moonRainContainer.Visible = false
-        toggleBtn.Text = "O"
+        toggleBtn.Text = "⚡"
         toggleBtn.BackgroundColor3 = Color3.fromRGB(35, 50, 35)
         isMinimized = true
     end
@@ -1683,8 +1638,8 @@ local function updateLoading()
         
         local flickerCount = 0
         local function flicker()
-            if flickerCount < 10 then
-                accessText.TextTransparency = flickerCount % 2 == 0 and 0 or 0.7
+            if flickerCount < 8 then
+                accessText.TextTransparency = flickerCount % 2 == 0 and 0 or 0.8
                 flickerCount = flickerCount + 1
                 task.wait(0.08)
                 flicker()
@@ -1725,19 +1680,29 @@ function transitionToMain()
     mainFrame.Size = UDim2.new(0, 0, 0, 0)
     
     local showTween = TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 800, 0, 500)
+        Size = UDim2.new(0, 900, 0, 600)
     })
     showTween:Play()
     
     task.wait(0.2)
-    if sectionButtons["Main"] then
-        sectionButtons["Main"].MouseButton1Click:Fire()
+    if sectionButtons["MAIN"] then
+        sectionButtons["MAIN"].MouseButton1Click:Fire()
     end
     
-    print("YAGAMI HUB - MM2 Edition Fully Loaded!")
+    print("YAGAMI HUB - MM2 Ultimate Edition Loaded!")
 end
 
 updateLoading()
+
+-- ============================================
+-- AUTOMATIC ROUND CHECK LOOP
+-- ============================================
+task.spawn(function()
+    while true do
+        task.wait(2)
+        checkForRoundStart()
+    end
+end)
 
 -- ============================================
 -- RE-OPEN HOTKEY (Press R)
@@ -1750,14 +1715,14 @@ UserInput.InputBegan:Connect(function(input, gameProcessed)
         elseif not mainFrame.Visible then
             screenGui.Enabled = true
             mainFrame.Visible = true
-            mainFrame.Size = UDim2.new(0, 800, 0, 500)
+            mainFrame.Size = UDim2.new(0, 900, 0, 600)
             navFrame.Visible = true
             contentFrame.Visible = true
             moonRainContainer.Visible = true
-            toggleBtn.Text = "X"
+            toggleBtn.Text = "✕"
             isMinimized = false
-            if sectionButtons["Main"] then
-                sectionButtons["Main"].MouseButton1Click:Fire()
+            if sectionButtons["MAIN"] then
+                sectionButtons["MAIN"].MouseButton1Click:Fire()
             end
         end
     end
@@ -1782,4 +1747,4 @@ task.wait(2)
 updateSelfRole()
 updateRoleVariables()
 
-print("YAGAMI HUB - MM2 Ready! Features: Inventory Scan ESP, Role Notifications, Fixed Auto Farm, Fling Murderer/Sheriff, Aimlock, Silent Aim")
+print("YAGAMI HUB - MM2 Ultimate Ready! Features: Auto Round Notifications, Role ESP, Flying Farm, Aimlock, Silent Aim, Fling")
