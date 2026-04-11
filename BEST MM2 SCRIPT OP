@@ -1,4 +1,4 @@
--- YAGAMI HUB - UNIVERSAL GUI
+---- YAGAMI HUB - UNIVERSAL GUI (FIXED)
 -- Works on Delta, Synapse X, Krnl, and all executors
 -- Supports Mobile & PC with DRAGGABLE functionality
 
@@ -8,13 +8,22 @@ local player = game:GetService("Players").LocalPlayer
 local mouse = player:GetMouse()
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+-- Wait for PlayerGui to exist
+local playerGui = player:WaitForChild("PlayerGui")
 
 -- Create GUI
 local gui = Instance.new("ScreenGui")
 gui.Name = "YagamiHub"
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Parent = player:WaitForChild("PlayerGui")
+gui.Parent = playerGui
+
+-- Make sure GUI is visible
+gui.Enabled = true
+
+print("GUI Created - Loading screen should appear")
 
 -- ========== MINI LOADING RECTANGLE ==========
 local loadingFrame = Instance.new("Frame")
@@ -25,9 +34,10 @@ loadingFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
 loadingFrame.BackgroundTransparency = 0
 loadingFrame.BorderSizePixel = 0
 loadingFrame.ClipsDescendants = true
+loadingFrame.Visible = true
 loadingFrame.Parent = gui
 
--- Rounded corners (works on all executors)
+-- Rounded corners
 local loadingCorner = Instance.new("UICorner")
 loadingCorner.CornerRadius = UDim.new(0, 15)
 loadingCorner.Parent = loadingFrame
@@ -236,10 +246,17 @@ placeholderText.Parent = contentFrame
 local dragging = false
 local dragStart = nil
 local startPos = nil
+local currentDragInput = nil
 
 local function updateDrag(input)
+    if not dragging or not dragStart or not startPos then return end
     local delta = input.Position - dragStart
-    local newPosition = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    local newPosition = UDim2.new(
+        startPos.X.Scale, 
+        startPos.X.Offset + delta.X, 
+        startPos.Y.Scale, 
+        startPos.Y.Offset + delta.Y
+    )
     mainFrame.Position = newPosition
 end
 
@@ -248,9 +265,15 @@ titleBar.InputBegan:Connect(function(input)
         dragging = true
         dragStart = input.Position
         startPos = mainFrame.Position
-        input.Changed:Connect(function()
+        currentDragInput = input
+        
+        local conn
+        conn = input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
+                dragStart = nil
+                startPos = nil
+                conn:Disconnect()
             end
         end)
     end
@@ -273,13 +296,14 @@ local function closeGUI()
         mainFrame.Visible = false
         mainFrame.Size = UDim2.new(0, 600, 0, 400)
         mainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
+        gui.Enabled = false
     end)
 end
 
 closeButton.MouseButton1Click:Connect(closeGUI)
 closeButton.TouchTap:Connect(closeGUI)
 
--- ========== MINIMIZE FUNCTION (Shrinks to title text) ==========
+-- ========== MINIMIZE FUNCTION ==========
 local isMinimized = false
 
 local function toggleMinimize()
@@ -309,9 +333,11 @@ minimizeButton.TouchTap:Connect(toggleMinimize)
 
 -- ========== LOADING SIMULATION ==========
 local function startLoading()
+    print("Loading started...")
+    
     -- Animate loading frame pulse
     local pulseTween = TweenService:Create(loadingFrame, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-        BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+        BackgroundColor3 = Color3.fromRGB(25, 25, 40)
     })
     pulseTween:Play()
     
@@ -331,9 +357,11 @@ local function startLoading()
     for percent = 1, 100 do
         task.wait(0.02) -- 2 seconds total
         
+        -- Update progress
         progressFill.Size = UDim2.new(percent / 100, 0, 1, 0)
         percentText.Text = percent .. "%"
         
+        -- Update subtitle
         if currentStep <= #steps and percent >= steps[currentStep].percent then
             subtitleText.Text = steps[currentStep].text
             currentStep = currentStep + 1
@@ -350,6 +378,8 @@ end
 
 -- ========== TRANSITION EFFECT ==========
 local function transitionToMain()
+    print("Transitioning to main GUI...")
+    
     -- Shrink loading frame
     local shrinkTween = TweenService:Create(loadingFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
         Size = UDim2.new(0, 0, 0, 0)
@@ -360,6 +390,7 @@ local function transitionToMain()
     
     loadingFrame.Visible = false
     mainFrame.Visible = true
+    gui.Enabled = true
     
     -- Pop-in animation for main GUI
     mainFrame.Size = UDim2.new(0, 0, 0, 0)
@@ -369,14 +400,29 @@ local function transitionToMain()
     expandTween:Play()
     
     -- Particle burst effect
-    local burst = particleEmitter:Clone()
+    local burst = Instance.new("ParticleEmitter")
+    burst.Texture = "rbxasset://textures/particles/sparkles_main.dds"
     burst.Rate = 200
     burst.Lifetime = NumberRange.new(0.5, 1)
+    burst.Speed = NumberRange.new(5, 15)
+    burst.Transparency = NumberSequence.new(1, 0)
     burst.Parent = mainFrame
+    
     task.wait(0.5)
     burst:Destroy()
+    
+    print("Yagami Hub is ready!")
 end
 
--- ========== START ==========
-print("Yagami Hub Loaded - Supports Mobile & PC with Dragging!")
-startLoading()
+-- ========== START THE GUI ==========
+print("Yagami Hub Loaded - GUI should be visible now")
+pcall(function()
+    startLoading()
+end)
+
+-- Fallback in case loading doesn't start
+task.wait(1)
+if loadingFrame.Visible and progressFill.Size.X.Scale < 0.1 then
+    print("Fallback starting...")
+    startLoading()
+end
