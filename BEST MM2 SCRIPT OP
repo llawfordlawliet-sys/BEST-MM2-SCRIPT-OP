@@ -1,6 +1,6 @@
----- YAGAMI HUB - MURDER MYSTERY 2 EDITION
+-- YAGAMI HUB - MURDER MYSTERY 2 EDITION
 -- Works on Delta, Synapse, Krnl, ScriptWare, Fluxus, Oxygen U
--- Silent Aim works as Sheriff (auto-aims at Murderer)
+-- Silent Aim Universal | Underground Flying Coin Farm | Animated FOV Circle
 
 repeat task.wait() until game:IsLoaded()
 
@@ -23,39 +23,115 @@ local retroFont = Enum.Font.Gotham
 -- ============================================
 -- MM2 VARIABLES
 -- ============================================
-local currentRole = "Innocent" -- Will be updated
+local currentRole = "Innocent"
 local silentAimEnabled = false
+local showFOVCircle = false
 local autoCollectEnabled = false
 local currentTarget = nil
 local collectConnection = nil
+local noclipEnabled = false
+
+-- FOV Circle Variables
+local fovCircle = nil
+local fovRadius = 150
+local circleAnimation = nil
+
+-- ============================================
+-- NOCLIP / FLY FUNCTIONALITY
+-- ============================================
+local function setNoclip(state)
+    noclipEnabled = state
+    local character = plr.Character
+    if character then
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = not state
+            end
+        end
+    end
+end
+
+-- Fly to position (underground flying)
+local function flyToPosition(targetPos)
+    local character = plr.Character
+    if not character then return false end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not rootPart then return false end
+    
+    -- Enable noclip for flying through floors
+    setNoclip(true)
+    
+    local originalSpeed = humanoid.WalkSpeed
+    humanoid.WalkSpeed = 25
+    humanoid.PlatformStand = true
+    
+    local distance = (targetPos - rootPart.Position).Magnitude
+    local duration = distance / 25
+    
+    -- Smooth fly tween
+    local flyTween = TweenService:Create(rootPart, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
+        Position = targetPos
+    })
+    flyTween:Play()
+    
+    flyTween.Completed:Wait()
+    
+    humanoid.PlatformStand = false
+    humanoid.WalkSpeed = originalSpeed
+    setNoclip(false)
+    
+    return true
+end
 
 -- Function to get player's current role
 local function updateRole()
-    for _, v in pairs(plr.Character:GetChildren()) do
-        if v:IsA("Tool") then
-            if v.Name == "Gun" then
-                currentRole = "Sheriff"
-                return
-            elseif v.Name == "Knife" then
-                currentRole = "Murderer"
-                return
+    if plr.Character then
+        for _, v in pairs(plr.Character:GetChildren()) do
+            if v:IsA("Tool") then
+                if v.Name == "Gun" then
+                    currentRole = "Sheriff"
+                    return
+                elseif v.Name == "Knife" then
+                    currentRole = "Murderer"
+                    return
+                end
             end
         end
     end
     currentRole = "Innocent"
 end
 
--- Get Murderer player (for Silent Aim)
-local function getMurderer()
+-- Get closest player (for universal silent aim)
+local function getClosestPlayer()
+    local character = plr.Character
+    if not character then return nil end
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return nil end
+    
+    local closest = nil
+    local closestDist = math.huge
+    
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= plr and player.Character and player.Character:FindFirstChild("Knife") then
-            return player
+        if player ~= plr and player.Character then
+            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+            if targetRoot then
+                local dist = (targetRoot.Position - rootPart.Position).Magnitude
+                if dist < closestDist then
+                    closestDist = dist
+                    closest = player
+                end
+            end
         end
     end
-    return nil
+    
+    return closest
 end
 
--- Get all coins on ground (for auto-collect)
+-- Get all coins on ground (including underground)
 local function getCoins()
     local coins = {}
     for _, descendant in ipairs(Workspace:GetDescendants()) do
@@ -66,114 +142,112 @@ local function getCoins()
     return coins
 end
 
--- Walk to coin (no teleport/fly)
-local function walkToCoin(coin)
+-- Fly to coin (underground flying)
+local function flyToCoin(coin)
     if not coin or not coin.Parent then return false end
     
     local character = plr.Character
     if not character then return false end
     
-    local humanoid = character:FindFirstChild("Humanoid")
     local rootPart = character:FindFirstChild("HumanoidRootPart")
-    
-    if not humanoid or not rootPart then return false end
-    
-    local originalSpeed = humanoid.WalkSpeed
-    humanoid.WalkSpeed = 25
+    if not rootPart then return false end
     
     local targetPos = coin.Position
-    humanoid:MoveTo(targetPos)
-    
-    local timeout = 8
-    local startTime = tick()
-    
-    repeat
-        task.wait(0.1)
-        local dist = (targetPos - rootPart.Position).Magnitude
-        if dist <= 5 then
-            humanoid:MoveTo(rootPart.Position)
-            return true
-        end
-        humanoid:MoveTo(targetPos)
-    until not coin.Parent or (tick() - startTime) > timeout
-    
-    humanoid.WalkSpeed = originalSpeed
-    return false
+    return flyToPosition(targetPos)
 end
 
 -- ============================================
--- SILENT AIM (WORKS FOR SHERIFF IN MM2)
+-- UNIVERSAL SILENT AIM
 -- ============================================
-local function getClosestMurderer()
-    local murderer = getMurderer()
-    if not murderer or not murderer.Character then return nil end
-    
-    local character = plr.Character
-    if not character then return nil end
-    
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return nil end
-    
-    local murdererRoot = murderer.Character:FindFirstChild("HumanoidRootPart")
-    if not murdererRoot then return nil end
-    
-    return {
-        player = murderer,
-        rootPart = murdererRoot,
-        distance = (murdererRoot.Position - rootPart.Position).Magnitude
-    }
-end
-
--- Silent aim execution - aims gun at murderer
 local function updateSilentAim()
     if not silentAimEnabled then return end
     
-    -- Check if player is Sheriff (has gun)
-    local gun = plr.Character and plr.Character:FindFirstChild("Gun")
-    if not gun then return end
+    local tool = plr.Character and plr.Character:FindFirstChildWhichIsA("Tool")
+    if not tool then return end
     
-    local murdererData = getClosestMurderer()
-    if not murdererData then return end
+    local targetPlayer = getClosestPlayer()
+    if not targetPlayer or not targetPlayer.Character then return end
     
-    -- Get mouse and lock onto murderer
+    local targetHead = targetPlayer.Character:FindFirstChild("Head")
+    if not targetHead then return end
+    
+    -- Get mouse and lock onto target
     local mouse = plr:GetMouse()
-    local murdererHead = murdererData.player.Character:FindFirstChild("Head")
+    local vector, onScreen = Workspace.CurrentCamera:WorldToScreenPoint(targetHead.Position)
     
-    if murdererHead then
-        -- Convert world position to screen position
-        local vector, onScreen = Workspace.CurrentCamera:WorldToScreenPoint(murdererHead.Position)
-        if onScreen then
-            -- Move mouse to murderer's head position (silent aim)
-            mousemoverel(vector.X - mouse.X, vector.Y - mouse.Y)
-            
-            -- Auto-shoot when aimed
-            if gun and gun:FindFirstChild("Fire") then
-                local args = {mouse.Hit}
-                gun.Fire:FireServer(unpack(args))
-            end
+    if onScreen then
+        -- Move mouse to target head (silent aim)
+        mousemoverel(vector.X - mouse.X, vector.Y - mouse.Y)
+        
+        -- Auto-shoot if tool has Fire method
+        if tool:FindFirstChild("Fire") then
+            local args = {mouse.Hit}
+            tool.Fire:FireServer(unpack(args))
         end
     end
 end
 
--- Connect silent aim to render step
-local silentAimConnection = nil
-local function startSilentAim()
-    if silentAimConnection then silentAimConnection:Disconnect() end
-    silentAimConnection = RunService.RenderStepped:Connect(updateSilentAim)
+-- ============================================
+-- ANIMATED FOV CIRCLE
+-- ============================================
+local function createFOVCircle()
+    if fovCircle then fovCircle:Destroy() end
+    
+    fovCircle = Instance.new("Frame")
+    fovCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+    fovCircle.Position = UDim2.new(0.5, -fovRadius, 0.5, -fovRadius)
+    fovCircle.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    fovCircle.BackgroundTransparency = 0.9
+    fovCircle.BorderSizePixel = 0
+    fovCircle.Visible = showFOVCircle
+    fovCircle.Parent = screenGui
+    
+    local circleCorner = Instance.new("UICorner")
+    circleCorner.CornerRadius = UDim.new(1, 0)
+    circleCorner.Parent = fovCircle
+    
+    local circleStroke = Instance.new("UIStroke")
+    circleStroke.Color = Color3.fromRGB(255, 0, 0)
+    circleStroke.Thickness = 2
+    circleStroke.Transparency = 0.5
+    circleStroke.Parent = fovCircle
+    
+    -- Pulsing animation
+    local pulseUp = TweenService:Create(fovCircle, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+        BackgroundTransparency = 0.85,
+        Size = UDim2.new(0, (fovRadius * 2) + 10, 0, (fovRadius * 2) + 10),
+        Position = UDim2.new(0.5, -(fovRadius + 5), 0.5, -(fovRadius + 5))
+    })
+    
+    local pulseDown = TweenService:Create(fovCircle, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+        BackgroundTransparency = 0.9,
+        Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2),
+        Position = UDim2.new(0.5, -fovRadius, 0.5, -fovRadius)
+    })
+    
+    circleAnimation = RunService.RenderStepped:Connect(function()
+        if showFOVCircle and fovCircle and fovCircle.Visible then
+            pulseUp:Play()
+            pulseUp.Completed:Wait()
+            pulseDown:Play()
+            pulseDown.Completed:Wait()
+        end
+    end)
 end
 
-local function stopSilentAim()
-    if silentAimConnection then
-        silentAimConnection:Disconnect()
-        silentAimConnection = nil
+local function toggleFOVCircle()
+    showFOVCircle = not showFOVCircle
+    if fovCircle then
+        fovCircle.Visible = showFOVCircle
+    else
+        createFOVCircle()
     end
 end
 
 -- ============================================
--- AUTO COLLECT COINS
+-- AUTO COLLECT COINS (UNDERGROUND FLYING)
 -- ============================================
 local autoCollectConnection = nil
-local isCollecting = false
 
 local function startAutoCollect()
     if autoCollectConnection then autoCollectConnection:Disconnect() end
@@ -184,12 +258,12 @@ local function startAutoCollect()
         local character = plr.Character
         if not character then return end
         
-        local humanoid = character:FindFirstChild("Humanoid")
         local rootPart = character:FindFirstChild("HumanoidRootPart")
-        if not humanoid or not rootPart then return end
+        if not rootPart then return end
         
         local coins = getCoins()
         if #coins > 0 then
+            -- Find closest coin
             local closestCoin = nil
             local closestDist = math.huge
             
@@ -202,7 +276,7 @@ local function startAutoCollect()
             end
             
             if closestCoin then
-                walkToCoin(closestCoin)
+                flyToCoin(closestCoin)
             end
         end
     end)
@@ -213,14 +287,7 @@ local function stopAutoCollect()
         autoCollectConnection:Disconnect()
         autoCollectConnection = nil
     end
-    
-    local character = plr.Character
-    if character then
-        local humanoid = character:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid.WalkSpeed = 16
-        end
-    end
+    setNoclip(false)
 end
 
 -- ============================================
@@ -508,17 +575,16 @@ local function createSectionContent(sectionName)
         roleText.TextWrapped = true
         roleText.Parent = roleFrame
         
-        -- Update role text every second
         task.spawn(function()
             while scrollFrame and scrollFrame.Parent do
                 updateRole()
-                roleText.Text = "Current Role: " .. currentRole .. "\nPress R to toggle GUI\n\nSilent Aim Status: " .. (silentAimEnabled and "ENABLED" or "DISABLED")
+                roleText.Text = "Current Role: " .. currentRole .. "\nPress R to toggle GUI\n\nSilent Aim: " .. (silentAimEnabled and "ON" or "OFF") .. " | FOV Circle: " .. (showFOVCircle and "ON" or "OFF")
                 task.wait(1)
             end
         end)
         
     elseif sectionName == "Combat" then
-        -- Silent Aim Toggle
+        -- Silent Aim Toggle (Main)
         local silentFrame = Instance.new("Frame")
         silentFrame.Size = UDim2.new(1, -20, 0, 50)
         silentFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
@@ -534,7 +600,7 @@ local function createSectionContent(sectionName)
         silentLabel.Size = UDim2.new(0.6, 0, 1, 0)
         silentLabel.Position = UDim2.new(0.05, 0, 0, 0)
         silentLabel.BackgroundTransparency = 1
-        silentLabel.Text = "Silent Aim (Sheriff Only)"
+        silentLabel.Text = "UNIVERSAL SILENT AIM"
         silentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         silentLabel.TextSize = 16
         silentLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -556,35 +622,113 @@ local function createSectionContent(sectionName)
         btnCorner.CornerRadius = UDim.new(0, 6)
         btnCorner.Parent = silentButton
         
+        -- Animated expand/collapse for FOV option
+        local fovOptionFrame = Instance.new("Frame")
+        fovOptionFrame.Size = UDim2.new(1, -40, 0, 0)
+        fovOptionFrame.Position = UDim2.new(0, 20, 0, 60)
+        fovOptionFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+        fovOptionFrame.BackgroundTransparency = 0.5
+        fovOptionFrame.BorderSizePixel = 0
+        fovOptionFrame.Visible = false
+        fovOptionFrame.ClipsDescendants = true
+        fovOptionFrame.Parent = scrollFrame
+        
+        local fovCorner = Instance.new("UICorner")
+        fovCorner.CornerRadius = UDim.new(0, 6)
+        fovCorner.Parent = fovOptionFrame
+        
+        local fovLabel = Instance.new("TextLabel")
+        fovLabel.Size = UDim2.new(0.7, 0, 1, 0)
+        fovLabel.Position = UDim2.new(0.05, 0, 0, 0)
+        fovLabel.BackgroundTransparency = 1
+        fovLabel.Text = "Show Silent Aim FOV Circle"
+        fovLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        fovLabel.TextSize = 14
+        fovLabel.TextXAlignment = Enum.TextXAlignment.Left
+        fovLabel.Font = retroFont
+        fovLabel.Parent = fovOptionFrame
+        
+        local fovButton = Instance.new("TextButton")
+        fovButton.Size = UDim2.new(0, 70, 0, 30)
+        fovButton.Position = UDim2.new(0.75, 0, 0.5, -15)
+        fovButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+        fovButton.BorderSizePixel = 0
+        fovButton.Text = "OFF"
+        fovButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        fovButton.TextSize = 14
+        fovButton.Font = retroFont
+        fovButton.Parent = fovOptionFrame
+        
+        local fovBtnCorner = Instance.new("UICorner")
+        fovBtnCorner.CornerRadius = UDim.new(0, 6)
+        fovBtnCorner.Parent = fovButton
+        
         local silentInfo = Instance.new("TextLabel")
         silentInfo.Size = UDim2.new(1, -20, 0, 60)
-        silentInfo.Position = UDim2.new(0, 10, 0, 70)
+        silentInfo.Position = UDim2.new(0, 10, 0, 120)
         silentInfo.BackgroundTransparency = 1
         silentInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
         silentInfo.TextSize = 14
         silentInfo.Font = retroFont
         silentInfo.TextWrapped = true
-        silentInfo.Text = "When enabled as Sheriff, your aim will automatically lock onto the Murderer. Works best with gun."
+        silentInfo.Text = "Universal Silent Aim works with ANY weapon. Automatically locks onto the closest player."
         silentInfo.Parent = scrollFrame
         
+        -- Animate expand/collapse
+        local function expandOptions()
+            local expandTween = TweenService:Create(fovOptionFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1, -40, 0, 40)
+            })
+            fovOptionFrame.Visible = true
+            expandTween:Play()
+        end
+        
+        local function collapseOptions()
+            local collapseTween = TweenService:Create(fovOptionFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Size = UDim2.new(1, -40, 0, 0)
+            })
+            collapseTween:Play()
+            task.wait(0.2)
+            fovOptionFrame.Visible = false
+        end
+        
+        -- Silent Aim toggle logic
+        local silentAimConnection = nil
         silentButton.MouseButton1Click:Connect(function()
             if silentAimEnabled then
                 silentAimEnabled = false
-                stopSilentAim()
+                if silentAimConnection then silentAimConnection:Disconnect() end
                 silentButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
                 silentButton.Text = "OFF"
-                silentInfo.Text = "Silent Aim DISABLED. When enabled as Sheriff, aim locks onto Murderer."
+                collapseOptions()
+                silentInfo.Text = "Universal Silent Aim DISABLED. Works with ANY weapon, locks onto closest player."
             else
                 silentAimEnabled = true
-                startSilentAim()
+                silentAimConnection = RunService.RenderStepped:Connect(updateSilentAim)
                 silentButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
                 silentButton.Text = "ON"
-                silentInfo.Text = "Silent Aim ENABLED! When Sheriff, aim will lock onto Murderer. Works best with gun."
+                expandOptions()
+                silentInfo.Text = "Universal Silent Aim ENABLED! Aims at closest player. FOV circle option below."
+            end
+        end)
+        
+        -- FOV Circle toggle
+        fovButton.MouseButton1Click:Connect(function()
+            if showFOVCircle then
+                showFOVCircle = false
+                if fovCircle then fovCircle.Visible = false end
+                fovButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+                fovButton.Text = "OFF"
+            else
+                showFOVCircle = true
+                createFOVCircle()
+                fovButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+                fovButton.Text = "ON"
             end
         end)
         
     elseif sectionName == "Auto-farm" then
-        -- Auto Collect Coins
+        -- Auto Collect Coins (Underground Flying)
         local autoFrame = Instance.new("Frame")
         autoFrame.Size = UDim2.new(1, -20, 0, 50)
         autoFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
@@ -600,7 +744,7 @@ local function createSectionContent(sectionName)
         autoLabel.Size = UDim2.new(0.6, 0, 1, 0)
         autoLabel.Position = UDim2.new(0.05, 0, 0, 0)
         autoLabel.BackgroundTransparency = 1
-        autoLabel.Text = "Auto Collect Coins"
+        autoLabel.Text = "Auto Farm Coins (Underground Flying)"
         autoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         autoLabel.TextSize = 16
         autoLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -623,14 +767,14 @@ local function createSectionContent(sectionName)
         btnCorner2.Parent = autoButton
         
         local autoInfo = Instance.new("TextLabel")
-        autoInfo.Size = UDim2.new(1, -20, 0, 80)
+        autoInfo.Size = UDim2.new(1, -20, 0, 100)
         autoInfo.Position = UDim2.new(0, 10, 0, 70)
         autoInfo.BackgroundTransparency = 1
         autoInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
         autoInfo.TextSize = 14
         autoInfo.Font = retroFont
         autoInfo.TextWrapped = true
-        autoInfo.Text = "Auto collects coins that spawn on the ground. Walks to coins at speed 25 (no teleport/fly)."
+        autoInfo.Text = "Auto collects coins that spawn on the ground and underground. FLYS through floors at speed 25 to reach coins. Prioritizes the closest coin first."
         autoInfo.Parent = scrollFrame
         
         autoButton.MouseButton1Click:Connect(function()
@@ -639,13 +783,13 @@ local function createSectionContent(sectionName)
                 stopAutoCollect()
                 autoButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
                 autoButton.Text = "OFF"
-                autoInfo.Text = "Auto Collect DISABLED. When ON, walks to coins at speed 25."
+                autoInfo.Text = "Auto Collect DISABLED. When ON, flies underground to collect closest coins at speed 25."
             else
                 autoCollectEnabled = true
                 startAutoCollect()
                 autoButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
                 autoButton.Text = "ON"
-                autoInfo.Text = "Auto Collect ENABLED! Walking to nearby coins at speed 25."
+                autoInfo.Text = "Auto Collect ENABLED! Flying underground to collect closest coins at speed 25."
             end
         end)
         
@@ -871,7 +1015,7 @@ function transitionToMain()
         sectionButtons["Main"].MouseButton1Click:Fire()
     end
     
-    print("YAGAMI HUB - MM2 Edition Loaded!")
+    print("YAGAMI HUB - MM2 Edition Loaded! Universal Silent Aim + Underground Flying Farm!")
 end
 
 updateLoading()
@@ -900,15 +1044,12 @@ UserInput.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Update role when character changes
+-- Cleanup on player leave
 plr.CharacterAdded:Connect(function()
     task.wait(1)
     updateRole()
     if autoCollectEnabled then
         startAutoCollect()
-    end
-    if silentAimEnabled then
-        startSilentAim()
     end
 end)
 
@@ -916,4 +1057,4 @@ end)
 task.wait(2)
 updateRole()
 
-print("YAGAMI HUB - MM2 Ready! Silent Aim works as Sheriff!")
+print("YAGAMI HUB - MM2 Ready! Features: Universal Silent Aim, Underground Flying Coin Farm, Animated FOV Circle")
