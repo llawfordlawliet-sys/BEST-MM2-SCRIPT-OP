@@ -1,6 +1,6 @@
--- YAGAMI HUB - MURDER MYSTERY 2 EDITION
+--- YAGAMI HUB - MURDER MYSTERY 2 EDITION
 -- Works on Delta, Synapse, Krnl, ScriptWare, Fluxus, Oxygen U
--- Silent Aim Universal | Underground Flying Coin Farm | Animated FOV Circle
+-- Silent Aim Universal | Underground Flying Coin Farm | Animated FOV Circle | Role-Based ESP
 
 repeat task.wait() until game:IsLoaded()
 
@@ -30,11 +30,21 @@ local autoCollectEnabled = false
 local currentTarget = nil
 local collectConnection = nil
 local noclipEnabled = false
+local espEnabled = false
+local espConnections = {}
+local espObjects = {}
 
 -- FOV Circle Variables
 local fovCircle = nil
 local fovRadius = 150
 local circleAnimation = nil
+
+-- Role colors for ESP
+local ROLE_COLORS = {
+    Murderer = Color3.fromRGB(255, 0, 0),     -- Red
+    Sheriff = Color3.fromRGB(0, 100, 255),    -- Blue
+    Innocent = Color3.fromRGB(0, 255, 0)      -- Green
+}
 
 -- ============================================
 -- NOCLIP / FLY FUNCTIONALITY
@@ -61,7 +71,6 @@ local function flyToPosition(targetPos)
     
     if not humanoid or not rootPart then return false end
     
-    -- Enable noclip for flying through floors
     setNoclip(true)
     
     local originalSpeed = humanoid.WalkSpeed
@@ -71,7 +80,6 @@ local function flyToPosition(targetPos)
     local distance = (targetPos - rootPart.Position).Magnitude
     local duration = distance / 25
     
-    -- Smooth fly tween
     local flyTween = TweenService:Create(rootPart, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
         Position = targetPos
     })
@@ -102,6 +110,26 @@ local function updateRole()
         end
     end
     currentRole = "Innocent"
+end
+
+-- Get player's role by checking their tools
+local function getPlayerRole(player)
+    if player == plr then return currentRole end
+    
+    local character = player.Character
+    if not character then return "Innocent" end
+    
+    for _, tool in pairs(character:GetChildren()) do
+        if tool:IsA("Tool") then
+            if tool.Name == "Gun" then
+                return "Sheriff"
+            elseif tool.Name == "Knife" then
+                return "Murderer"
+            end
+        end
+    end
+    
+    return "Innocent"
 end
 
 -- Get closest player (for universal silent aim)
@@ -171,15 +199,12 @@ local function updateSilentAim()
     local targetHead = targetPlayer.Character:FindFirstChild("Head")
     if not targetHead then return end
     
-    -- Get mouse and lock onto target
     local mouse = plr:GetMouse()
     local vector, onScreen = Workspace.CurrentCamera:WorldToScreenPoint(targetHead.Position)
     
     if onScreen then
-        -- Move mouse to target head (silent aim)
         mousemoverel(vector.X - mouse.X, vector.Y - mouse.Y)
         
-        -- Auto-shoot if tool has Fire method
         if tool:FindFirstChild("Fire") then
             local args = {mouse.Hit}
             tool.Fire:FireServer(unpack(args))
@@ -212,7 +237,6 @@ local function createFOVCircle()
     circleStroke.Transparency = 0.5
     circleStroke.Parent = fovCircle
     
-    -- Pulsing animation
     local pulseUp = TweenService:Create(fovCircle, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
         BackgroundTransparency = 0.85,
         Size = UDim2.new(0, (fovRadius * 2) + 10, 0, (fovRadius * 2) + 10),
@@ -245,6 +269,149 @@ local function toggleFOVCircle()
 end
 
 -- ============================================
+-- ROLE-BASED ESP (UPDATES EVERY SECOND)
+-- ============================================
+
+-- Create ESP highlight for a player
+local function createESPForPlayer(player)
+    if not player or player == plr then return end
+    
+    -- Destroy existing ESP for this player
+    if espObjects[player] then
+        local oldHighlight = espObjects[player]
+        if oldHighlight and oldHighlight.Parent then
+            oldHighlight:Destroy()
+        end
+        espObjects[player] = nil
+    end
+    
+    local character = player.Character
+    if not character then return end
+    
+    -- Create Highlight instance
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "YagamiESP"
+    highlight.Parent = character
+    highlight.FillTransparency = 0.6
+    highlight.OutlineTransparency = 0.2
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    
+    -- Set color based on role
+    local role = getPlayerRole(player)
+    highlight.FillColor = ROLE_COLORS[role] or ROLE_COLORS.Innocent
+    highlight.OutlineColor = highlight.FillColor
+    
+    espObjects[player] = highlight
+end
+
+-- Remove ESP for a player
+local function removeESPForPlayer(player)
+    if espObjects[player] then
+        local highlight = espObjects[player]
+        if highlight and highlight.Parent then
+            highlight:Destroy()
+        end
+        espObjects[player] = nil
+    end
+end
+
+-- Update ESP for all players (called every second)
+local function updateAllESP()
+    if not espEnabled then return end
+    
+    -- Get all current players
+    local currentPlayers = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= plr then
+            currentPlayers[player] = true
+        end
+    end
+    
+    -- Remove ESP for players that no longer exist
+    for player, _ in pairs(espObjects) do
+        if not currentPlayers[player] or not player.Character then
+            removeESPForPlayer(player)
+        end
+    end
+    
+    -- Create/Update ESP for current players
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= plr then
+            -- Check if player's role changed
+            if espObjects[player] then
+                local highlight = espObjects[player]
+                local currentRole = getPlayerRole(player)
+                local expectedColor = ROLE_COLORS[currentRole] or ROLE_COLORS.Innocent
+                
+                -- Update color if role changed
+                if highlight.FillColor ~= expectedColor then
+                    highlight.FillColor = expectedColor
+                    highlight.OutlineColor = expectedColor
+                end
+            else
+                -- Create new ESP if needed
+                if player.Character then
+                    createESPForPlayer(player)
+                end
+            end
+        end
+    end
+end
+
+-- Start ESP system (updates every second)
+local espUpdateConnection = nil
+
+local function startESP()
+    if espUpdateConnection then espUpdateConnection:Disconnect() end
+    
+    -- Initial ESP creation
+    updateAllESP()
+    
+    -- Update every second for accuracy
+    espUpdateConnection = RunService.Heartbeat:Connect(function()
+        if espEnabled then
+            -- Update every 1 second (check using tick)
+            if not espEnabled.lastUpdate or tick() - espEnabled.lastUpdate >= 1 then
+                espEnabled.lastUpdate = tick()
+                updateAllESP()
+            end
+        end
+    end)
+    
+    -- Also listen for character additions
+    local function onCharacterAdded(player)
+        if espEnabled and player ~= plr then
+            task.wait(0.5) -- Wait for character to fully load
+            if player.Character then
+                createESPForPlayer(player)
+            end
+        end
+    end
+    
+    -- Connect to player added event
+    espEnabled.playerAddedConnection = Players.PlayerAdded:Connect(onCharacterAdded)
+end
+
+local function stopESP()
+    if espUpdateConnection then
+        espUpdateConnection:Disconnect()
+        espUpdateConnection = nil
+    end
+    
+    if espEnabled and espEnabled.playerAddedConnection then
+        espEnabled.playerAddedConnection:Disconnect()
+    end
+    
+    -- Remove all ESP objects
+    for player, highlight in pairs(espObjects) do
+        if highlight and highlight.Parent then
+            highlight:Destroy()
+        end
+    end
+    espObjects = {}
+end
+
+-- ============================================
 -- AUTO COLLECT COINS (UNDERGROUND FLYING)
 -- ============================================
 local autoCollectConnection = nil
@@ -263,7 +430,6 @@ local function startAutoCollect()
         
         local coins = getCoins()
         if #coins > 0 then
-            -- Find closest coin
             local closestCoin = nil
             local closestDist = math.huge
             
@@ -578,7 +744,7 @@ local function createSectionContent(sectionName)
         task.spawn(function()
             while scrollFrame and scrollFrame.Parent do
                 updateRole()
-                roleText.Text = "Current Role: " .. currentRole .. "\nPress R to toggle GUI\n\nSilent Aim: " .. (silentAimEnabled and "ON" or "OFF") .. " | FOV Circle: " .. (showFOVCircle and "ON" or "OFF")
+                roleText.Text = "Current Role: " .. currentRole .. "\nPress R to toggle GUI\n\nSilent Aim: " .. (silentAimEnabled and "ON" or "OFF") .. " | ESP: " .. (espEnabled and "ON" or "OFF")
                 task.wait(1)
             end
         end)
@@ -714,17 +880,7 @@ local function createSectionContent(sectionName)
         
         -- FOV Circle toggle
         fovButton.MouseButton1Click:Connect(function()
-            if showFOVCircle then
-                showFOVCircle = false
-                if fovCircle then fovCircle.Visible = false end
-                fovButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-                fovButton.Text = "OFF"
-            else
-                showFOVCircle = true
-                createFOVCircle()
-                fovButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-                fovButton.Text = "ON"
-            end
+            toggleFOVCircle()
         end)
         
     elseif sectionName == "Auto-farm" then
@@ -794,15 +950,70 @@ local function createSectionContent(sectionName)
         end)
         
     elseif sectionName == "Visuals" then
-        local visualsText = Instance.new("TextLabel")
-        visualsText.Size = UDim2.new(1, 0, 0, 150)
-        visualsText.BackgroundTransparency = 1
-        visualsText.TextColor3 = Color3.fromRGB(200, 200, 200)
-        visualsText.TextSize = 16
-        visualsText.Font = retroFont
-        visualsText.TextWrapped = true
-        visualsText.Text = "Visual Enhancements\n\n- ESP: COMING SOON\n- Chams: COMING SOON\n- Tracers: COMING SOON\n- FOV Changer: COMING SOON"
-        visualsText.Parent = scrollFrame
+        -- ESP Toggle
+        local espFrame = Instance.new("Frame")
+        espFrame.Size = UDim2.new(1, -20, 0, 50)
+        espFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+        espFrame.BackgroundTransparency = 0.3
+        espFrame.BorderSizePixel = 0
+        espFrame.Parent = scrollFrame
+        
+        local espCorner = Instance.new("UICorner")
+        espCorner.CornerRadius = UDim.new(0, 8)
+        espCorner.Parent = espFrame
+        
+        local espLabel = Instance.new("TextLabel")
+        espLabel.Size = UDim2.new(0.6, 0, 1, 0)
+        espLabel.Position = UDim2.new(0.05, 0, 0, 0)
+        espLabel.BackgroundTransparency = 1
+        espLabel.Text = "ROLE-BASED ESP"
+        espLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        espLabel.TextSize = 16
+        espLabel.TextXAlignment = Enum.TextXAlignment.Left
+        espLabel.Font = retroFont
+        espLabel.Parent = espFrame
+        
+        local espButton = Instance.new("TextButton")
+        espButton.Size = UDim2.new(0, 80, 0, 35)
+        espButton.Position = UDim2.new(0.8, 0, 0.5, -17.5)
+        espButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+        espButton.BorderSizePixel = 0
+        espButton.Text = "OFF"
+        espButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        espButton.TextSize = 16
+        espButton.Font = retroFont
+        espButton.Parent = espFrame
+        
+        local espBtnCorner = Instance.new("UICorner")
+        espBtnCorner.CornerRadius = UDim.new(0, 6)
+        espBtnCorner.Parent = espButton
+        
+        local espInfo = Instance.new("TextLabel")
+        espInfo.Size = UDim2.new(1, -20, 0, 100)
+        espInfo.Position = UDim2.new(0, 10, 0, 70)
+        espInfo.BackgroundTransparency = 1
+        espInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
+        espInfo.TextSize = 14
+        espInfo.Font = retroFont
+        espInfo.TextWrapped = true
+        espInfo.Text = "Role-Based ESP:\n🟢 Innocent = Green\n🔴 Murderer = Red\n🔵 Sheriff = Blue\n\nUpdates every second for accuracy."
+        espInfo.Parent = scrollFrame
+        
+        espButton.MouseButton1Click:Connect(function()
+            if espEnabled then
+                espEnabled = false
+                stopESP()
+                espButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+                espButton.Text = "OFF"
+                espInfo.Text = "ESP DISABLED. When ON, shows players with role-based colors.\n🟢 Innocent = Green | 🔴 Murderer = Red | 🔵 Sheriff = Blue"
+            else
+                espEnabled = true
+                startESP()
+                espButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+                espButton.Text = "ON"
+                espInfo.Text = "ESP ENABLED! Showing role-based colors.\n🟢 Innocent = Green | 🔴 Murderer = Red | 🔵 Sheriff = Blue\nUpdates every second."
+            end
+        end)
         
     elseif sectionName == "Settings" then
         local settingsText = Instance.new("TextLabel")
@@ -1015,7 +1226,7 @@ function transitionToMain()
         sectionButtons["Main"].MouseButton1Click:Fire()
     end
     
-    print("YAGAMI HUB - MM2 Edition Loaded! Universal Silent Aim + Underground Flying Farm!")
+    print("YAGAMI HUB - MM2 Edition Loaded! Role-Based ESP + Underground Flying Farm!")
 end
 
 updateLoading()
@@ -1057,4 +1268,4 @@ end)
 task.wait(2)
 updateRole()
 
-print("YAGAMI HUB - MM2 Ready! Features: Universal Silent Aim, Underground Flying Coin Farm, Animated FOV Circle")
+print("YAGAMI HUB - MM2 Ready! Features: Universal Silent Aim, Underground Flying Coin Farm, Animated FOV Circle, Role-Based ESP (Green/Red/Blue)")
