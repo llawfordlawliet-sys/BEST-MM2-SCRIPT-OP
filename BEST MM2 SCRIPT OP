@@ -1,17 +1,19 @@
--- YAGAMI HUB - COMPLETE WORKING SCRIPT
+-- Y-- YAGAMI HUB - WITH MOON RAIN VFX & BLACK BORDERS
 -- Works on Delta, Synapse, Krnl, ScriptWare, Fluxus, Oxygen U
 
-repeat wait() until game:IsLoaded()
+repeat task.wait() until game:IsLoaded()
 
 local plr = game:GetService("Players").LocalPlayer
 local UserInput = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 -- Create GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "YagamiHub"
 screenGui.Parent = plr:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- ============================================
 -- LOADING SCREEN (Mini Rectangle)
@@ -29,9 +31,9 @@ loadingCorner.CornerRadius = UDim.new(0, 12)
 loadingCorner.Parent = loadingFrame
 
 local loadingStroke = Instance.new("UIStroke")
-loadingStroke.Color = Color3.fromRGB(0, 200, 255)
+loadingStroke.Color = Color3.fromRGB(0, 0, 0)
 loadingStroke.Thickness = 2
-loadingStroke.Transparency = 0.5
+loadingStroke.Transparency = 0
 loadingStroke.Parent = loadingFrame
 
 local loadingTitle = Instance.new("TextLabel")
@@ -96,18 +98,89 @@ mainFrame.BackgroundTransparency = 0
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
 mainFrame.Parent = screenGui
+mainFrame.ClipsDescendants = true
 
 local mainCorner = Instance.new("UICorner")
 mainCorner.CornerRadius = UDim.new(0, 12)
 mainCorner.Parent = mainFrame
 
 local mainStroke = Instance.new("UIStroke")
-mainStroke.Color = Color3.fromRGB(0, 200, 255)
+mainStroke.Color = Color3.fromRGB(0, 0, 0)
 mainStroke.Thickness = 2
-mainStroke.Transparency = 0.3
+mainStroke.Transparency = 0
 mainStroke.Parent = mainFrame
 
+-- ============================================
+-- MOON EMOJI RAIN VFX (35% transparent, slow falling)
+-- ============================================
+local moonRainContainer = Instance.new("Frame")
+moonRainContainer.Size = UDim2.new(1, 0, 1, 0)
+moonRainContainer.BackgroundTransparency = 1
+moonRainContainer.Parent = mainFrame
+
+local moonEmojis = {"🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙"}
+local moonRainItems = {}
+
+-- Create falling moon emojis
+for i = 1, 30 do
+    local moonLabel = Instance.new("TextLabel")
+    moonLabel.Size = UDim2.new(0, 30, 0, 30)
+    moonLabel.BackgroundTransparency = 1
+    moonLabel.Text = moonEmojis[math.random(1, #moonEmojis)]
+    moonLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    moonLabel.TextSize = math.random(20, 35)
+    moonLabel.TextTransparency = 0.35 -- 35% transparent
+    moonLabel.Font = Enum.Font.Gotham
+    moonLabel.Parent = moonRainContainer
+    
+    -- Random start positions
+    local startX = math.random(0, 800)
+    local startY = math.random(-500, -50)
+    moonLabel.Position = UDim2.new(0, startX, 0, startY)
+    
+    -- Random fall speed (slow)
+    local fallSpeed = math.random(30, 60)
+    
+    table.insert(moonRainItems, {
+        label = moonLabel,
+        speed = fallSpeed,
+        x = startX,
+        y = startY,
+        size = moonLabel.TextSize
+    })
+end
+
+-- Animate the moon rain
+task.spawn(function()
+    while mainFrame.Visible and mainFrame.Parent do
+        for _, item in pairs(moonRainItems) do
+            if item and item.label and item.label.Parent then
+                -- Move down
+                item.y = item.y + item.speed
+                
+                -- Reset when off screen
+                if item.y > 550 then
+                    item.y = -50
+                    item.x = math.random(0, 800)
+                    item.label.Position = UDim2.new(0, item.x, 0, item.y)
+                    -- Randomize size again
+                    item.size = math.random(20, 35)
+                    item.label.TextSize = item.size
+                else
+                    item.label.Position = UDim2.new(0, item.x, 0, item.y)
+                end
+                
+                -- Slight horizontal drift
+                item.x = item.x + math.sin(item.y * 0.01) * 0.5
+            end
+        end
+        task.wait(0.05) -- Smooth animation
+    end
+end)
+
+-- ============================================
 -- Title Bar
+-- ============================================
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 45)
 titleBar.Position = UDim2.new(0, 0, 0, 0)
@@ -120,7 +193,6 @@ local titleBarCorner = Instance.new("UICorner")
 titleBarCorner.CornerRadius = UDim.new(0, 12)
 titleBarCorner.Parent = titleBar
 
--- Title text
 local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(0.5, 0, 1, 0)
 titleText.Position = UDim2.new(0.05, 0, 0, 0)
@@ -132,7 +204,7 @@ titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.Font = Enum.Font.GothamBold
 titleText.Parent = titleBar
 
--- Close/Minimize Button (changes between X and O)
+-- Toggle Button (X/O)
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 40, 1, 0)
 toggleBtn.Position = UDim2.new(1, -45, 0, 0)
@@ -184,14 +256,12 @@ local activeSection = nil
 
 -- Function to create section content
 local function createSectionContent(sectionName)
-    -- Clear content frame
     for _, child in pairs(contentFrame:GetChildren()) do
         if child.Name ~= "UICorner" then
             child:Destroy()
         end
     end
     
-    -- Create title for section
     local sectionTitle = Instance.new("TextLabel")
     sectionTitle.Size = UDim2.new(1, 0, 0, 40)
     sectionTitle.Position = UDim2.new(0, 0, 0, 10)
@@ -203,19 +273,16 @@ local function createSectionContent(sectionName)
     sectionTitle.TextXAlignment = Enum.TextXAlignment.Center
     sectionTitle.Parent = contentFrame
     
-    -- Placeholder text
     local placeholderText = Instance.new("TextLabel")
     placeholderText.Size = UDim2.new(1, 0, 0, 30)
     placeholderText.Position = UDim2.new(0, 0, 0, 60)
     placeholderText.BackgroundTransparency = 1
-    placeholderText.Text = "No functions added yet\nComing soon..."
     placeholderText.TextColor3 = Color3.fromRGB(150, 150, 200)
     placeholderText.TextSize = 16
     placeholderText.Font = Enum.Font.Gotham
     placeholderText.TextWrapped = true
     placeholderText.Parent = contentFrame
     
-    -- Add specific placeholder based on section
     if sectionName == "Main" then
         placeholderText.Text = "Main Hub Functions\n\n- Player Info\n- Server Info\n- Rejoin\n- Server Hop"
     elseif sectionName == "Combat" then
@@ -247,7 +314,6 @@ for i, sectionName in ipairs(sections) do
     btnCorner.CornerRadius = UDim.new(0, 6)
     btnCorner.Parent = btn
     
-    -- Hover effects
     btn.MouseEnter:Connect(function()
         if activeSection ~= btn then
             btn.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
@@ -260,25 +326,20 @@ for i, sectionName in ipairs(sections) do
         end
     end)
     
-    -- Click handler
     btn.MouseButton1Click:Connect(function()
-        -- Reset all buttons
         for _, b in pairs(sectionButtons) do
             b.BackgroundColor3 = Color3.fromRGB(30, 30, 55)
             b.TextColor3 = Color3.fromRGB(200, 200, 255)
         end
-        -- Highlight active button
         btn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         activeSection = btn
-        -- Create content for this section
         createSectionContent(sectionName)
     end)
     
     sectionButtons[sectionName] = btn
 end
 
--- Default select Main section
 sectionButtons["Main"].MouseButton1Click:Fire()
 
 -- ============================================
@@ -315,44 +376,34 @@ UserInput.InputEnded:Connect(function(input)
 end)
 
 -- ============================================
--- TOGGLE BUTTON FUNCTIONALITY (X and O)
+-- TOGGLE BUTTON FUNCTIONALITY
 -- ============================================
 local isMinimized = false
 
 local function toggleGUI()
     if isMinimized then
-        -- EXPAND: Show full GUI
         local expandTween = TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
             Size = UDim2.new(0, 800, 0, 500)
         })
         expandTween:Play()
-        
-        -- Show navigation and content
         navFrame.Visible = true
         contentFrame.Visible = true
-        
-        -- Change button back to X
+        moonRainContainer.Visible = true
         toggleBtn.Text = "X"
         toggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
         toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 35, 35)
-        
         isMinimized = false
     else
-        -- MINIMIZE: Shrink to title only
         local shrinkTween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
             Size = UDim2.new(0, 200, 0, 45)
         })
         shrinkTween:Play()
-        
-        -- Hide navigation and content
         navFrame.Visible = false
         contentFrame.Visible = false
-        
-        -- Change button to O (open)
+        moonRainContainer.Visible = false
         toggleBtn.Text = "O"
         toggleBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
         toggleBtn.BackgroundColor3 = Color3.fromRGB(35, 50, 35)
-        
         isMinimized = true
     end
 end
@@ -361,7 +412,7 @@ toggleBtn.MouseButton1Click:Connect(toggleGUI)
 toggleBtn.TouchTap:Connect(toggleGUI)
 
 -- ============================================
--- LOADING ANIMATION
+-- LOADING ANIMATION (FIXED)
 -- ============================================
 local loadingSteps = {
     "Initializing Yagami Hub...",
@@ -374,18 +425,26 @@ local loadingSteps = {
 }
 
 local stepIndex = 1
-for i = 1, 100 do
-    wait(0.02)
+
+-- FIXED LOADING LOOP
+for percent = 1, 100 do
+    task.wait(0.02)
     
-    progressFill.Size = UDim2.new(i / 100, 0, 1, 0)
-    percentText.Text = i .. "%"
+    -- Update progress bar
+    progressFill.Size = UDim2.new(percent / 100, 0, 1, 0)
+    percentText.Text = percent .. "%"
     
-    if i >= stepIndex * 14 and stepIndex <= #loadingSteps then
+    -- Force GUI refresh
+    RunService.Heartbeat:Wait()
+    
+    -- Update subtitle
+    if percent >= stepIndex * 14 and stepIndex <= #loadingSteps then
         subText.Text = loadingSteps[stepIndex]
         stepIndex = stepIndex + 1
     end
     
-    local hue = 0.55 + (i / 100) * 0.2
+    -- Update color
+    local hue = 0.55 + (percent / 100) * 0.2
     progressFill.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
 end
 
@@ -397,7 +456,7 @@ local hideTween = TweenService:Create(loadingFrame, TweenInfo.new(0.3, Enum.Easi
 })
 hideTween:Play()
 
-wait(0.3)
+task.wait(0.3)
 loadingFrame.Visible = false
 
 mainFrame.Visible = true
@@ -417,10 +476,10 @@ burst.Speed = NumberRange.new(5, 15)
 burst.Transparency = NumberSequence.new(1, 0)
 burst.Parent = mainFrame
 
-wait(0.5)
+task.wait(0.5)
 burst:Destroy()
 
-print("YAGAMI HUB - Fully Loaded!")
+print("YAGAMI HUB - Fully Loaded with Moon Rain VFX!")
 
 -- ============================================
 -- RE-OPEN HOTKEY (Press R)
@@ -429,15 +488,14 @@ UserInput.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.R then
         if isMinimized then
-            -- If minimized, expand it
             toggleGUI()
         elseif not mainFrame.Visible then
-            -- If closed, reopen
             screenGui.Enabled = true
             mainFrame.Visible = true
             mainFrame.Size = UDim2.new(0, 800, 0, 500)
             navFrame.Visible = true
             contentFrame.Visible = true
+            moonRainContainer.Visible = true
             toggleBtn.Text = "X"
             isMinimized = false
         end
