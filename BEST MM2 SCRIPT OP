@@ -1,4 +1,4 @@
--- Y-- YAGAMI HUB - WITH MOON RAIN VFX & BLACK BORDERS
+---- YAGAMI HUB - FULLY FIXED WITH 8-BIT FONT & TRANSPARENCY
 -- Works on Delta, Synapse, Krnl, ScriptWare, Fluxus, Oxygen U
 
 repeat task.wait() until game:IsLoaded()
@@ -15,14 +15,24 @@ screenGui.Parent = plr:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
+-- 8-BIT FONT (using available fonts that look retro)
+local retroFont = Enum.Font.Gotham -- Fallback
+local fonts = {"Gotham", "SourceSans", "Arial"}
+for _, f in pairs(fonts) do
+    if Enum.Font[f] then
+        retroFont = Enum.Font[f]
+        break
+    end
+end
+
 -- ============================================
--- LOADING SCREEN (Mini Rectangle)
+-- LOADING SCREEN (Mini Rectangle with Transparency)
 -- ============================================
 local loadingFrame = Instance.new("Frame")
 loadingFrame.Size = UDim2.new(0, 400, 0, 200)
 loadingFrame.Position = UDim2.new(0.5, -200, 0.5, -100)
-loadingFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
-loadingFrame.BackgroundTransparency = 0
+loadingFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+loadingFrame.BackgroundTransparency = 0.15 -- 15% transparent
 loadingFrame.BorderSizePixel = 0
 loadingFrame.Parent = screenGui
 
@@ -41,9 +51,10 @@ loadingTitle.Size = UDim2.new(1, 0, 0, 40)
 loadingTitle.Position = UDim2.new(0, 0, 0, 15)
 loadingTitle.BackgroundTransparency = 1
 loadingTitle.Text = "YAGAMI HUB"
-loadingTitle.TextColor3 = Color3.fromRGB(0, 200, 255)
+loadingTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 loadingTitle.TextSize = 24
-loadingTitle.Font = Enum.Font.GothamBold
+loadingTitle.Font = retroFont
+loadingTitle.TextStrokeTransparency = 0.5
 loadingTitle.Parent = loadingFrame
 
 local progressBg = Instance.new("Frame")
@@ -59,7 +70,7 @@ progressBgCorner.Parent = progressBg
 
 local progressFill = Instance.new("Frame")
 progressFill.Size = UDim2.new(0, 0, 1, 0)
-progressFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+progressFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 progressFill.BorderSizePixel = 0
 progressFill.Parent = progressBg
 
@@ -72,9 +83,9 @@ percentText.Size = UDim2.new(0.3, 0, 0, 30)
 percentText.Position = UDim2.new(0.35, 0, 0.7, 0)
 percentText.BackgroundTransparency = 1
 percentText.Text = "0%"
-percentText.TextColor3 = Color3.fromRGB(200, 200, 255)
+percentText.TextColor3 = Color3.fromRGB(255, 255, 255)
 percentText.TextSize = 18
-percentText.Font = Enum.Font.Gotham
+percentText.Font = retroFont
 percentText.Parent = loadingFrame
 
 local subText = Instance.new("TextLabel")
@@ -82,19 +93,19 @@ subText.Size = UDim2.new(0.9, 0, 0, 25)
 subText.Position = UDim2.new(0.05, 0, 0.82, 0)
 subText.BackgroundTransparency = 1
 subText.Text = "Initializing..."
-subText.TextColor3 = Color3.fromRGB(150, 150, 200)
+subText.TextColor3 = Color3.fromRGB(200, 200, 200)
 subText.TextSize = 14
-subText.Font = Enum.Font.Gotham
+subText.Font = retroFont
 subText.Parent = loadingFrame
 
 -- ============================================
--- MAIN GUI (Stretched Horizontally)
+-- MAIN GUI (With Transparency)
 -- ============================================
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 800, 0, 500)
 mainFrame.Position = UDim2.new(0.5, -400, 0.5, -250)
-mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
-mainFrame.BackgroundTransparency = 0
+mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+mainFrame.BackgroundTransparency = 0.15 -- 15% transparent
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
 mainFrame.Parent = screenGui
@@ -121,7 +132,6 @@ moonRainContainer.Parent = mainFrame
 local moonEmojis = {"🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙", "🌙"}
 local moonRainItems = {}
 
--- Create falling moon emojis
 for i = 1, 30 do
     local moonLabel = Instance.new("TextLabel")
     moonLabel.Size = UDim2.new(0, 30, 0, 30)
@@ -129,16 +139,14 @@ for i = 1, 30 do
     moonLabel.Text = moonEmojis[math.random(1, #moonEmojis)]
     moonLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
     moonLabel.TextSize = math.random(20, 35)
-    moonLabel.TextTransparency = 0.35 -- 35% transparent
-    moonLabel.Font = Enum.Font.Gotham
+    moonLabel.TextTransparency = 0.35
+    moonLabel.Font = retroFont
     moonLabel.Parent = moonRainContainer
     
-    -- Random start positions
     local startX = math.random(0, 800)
     local startY = math.random(-500, -50)
     moonLabel.Position = UDim2.new(0, startX, 0, startY)
     
-    -- Random fall speed (slow)
     local fallSpeed = math.random(30, 60)
     
     table.insert(moonRainItems, {
@@ -150,31 +158,26 @@ for i = 1, 30 do
     })
 end
 
--- Animate the moon rain
 task.spawn(function()
-    while mainFrame.Visible and mainFrame.Parent do
+    while mainFrame and mainFrame.Visible and mainFrame.Parent do
         for _, item in pairs(moonRainItems) do
             if item and item.label and item.label.Parent then
-                -- Move down
                 item.y = item.y + item.speed
                 
-                -- Reset when off screen
                 if item.y > 550 then
                     item.y = -50
                     item.x = math.random(0, 800)
                     item.label.Position = UDim2.new(0, item.x, 0, item.y)
-                    -- Randomize size again
                     item.size = math.random(20, 35)
                     item.label.TextSize = item.size
                 else
                     item.label.Position = UDim2.new(0, item.x, 0, item.y)
                 end
                 
-                -- Slight horizontal drift
                 item.x = item.x + math.sin(item.y * 0.01) * 0.5
             end
         end
-        task.wait(0.05) -- Smooth animation
+        task.wait(0.05)
     end
 end)
 
@@ -184,8 +187,8 @@ end)
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 45)
 titleBar.Position = UDim2.new(0, 0, 0, 0)
-titleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 45)
-titleBar.BackgroundTransparency = 0
+titleBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+titleBar.BackgroundTransparency = 0.2
 titleBar.BorderSizePixel = 0
 titleBar.Parent = mainFrame
 
@@ -198,23 +201,22 @@ titleText.Size = UDim2.new(0.5, 0, 1, 0)
 titleText.Position = UDim2.new(0.05, 0, 0, 0)
 titleText.BackgroundTransparency = 1
 titleText.Text = "YAGAMI HUB"
-titleText.TextColor3 = Color3.fromRGB(0, 200, 255)
+titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleText.TextSize = 22
 titleText.TextXAlignment = Enum.TextXAlignment.Left
-titleText.Font = Enum.Font.GothamBold
+titleText.Font = retroFont
 titleText.Parent = titleBar
 
--- Toggle Button (X/O)
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 40, 1, 0)
 toggleBtn.Position = UDim2.new(1, -45, 0, 0)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 35, 35)
-toggleBtn.BackgroundTransparency = 0
+toggleBtn.BackgroundTransparency = 0.2
 toggleBtn.BorderSizePixel = 0
 toggleBtn.Text = "X"
-toggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggleBtn.TextSize = 20
-toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.Font = retroFont
 toggleBtn.Parent = titleBar
 
 local toggleCorner = Instance.new("UICorner")
@@ -227,8 +229,8 @@ toggleCorner.Parent = toggleBtn
 local navFrame = Instance.new("Frame")
 navFrame.Size = UDim2.new(0, 150, 1, -55)
 navFrame.Position = UDim2.new(1, -160, 0, 50)
-navFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
-navFrame.BackgroundTransparency = 0.2
+navFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+navFrame.BackgroundTransparency = 0.3
 navFrame.BorderSizePixel = 0
 navFrame.Parent = mainFrame
 
@@ -236,11 +238,10 @@ local navCorner = Instance.new("UICorner")
 navCorner.CornerRadius = UDim.new(0, 8)
 navCorner.Parent = navFrame
 
--- Content display area (left side)
 local contentFrame = Instance.new("Frame")
 contentFrame.Size = UDim2.new(1, -170, 1, -55)
 contentFrame.Position = UDim2.new(0, 10, 0, 50)
-contentFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+contentFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 contentFrame.BackgroundTransparency = 0.3
 contentFrame.BorderSizePixel = 0
 contentFrame.Parent = mainFrame
@@ -249,12 +250,11 @@ local contentCorner = Instance.new("UICorner")
 contentCorner.CornerRadius = UDim.new(0, 8)
 contentCorner.Parent = contentFrame
 
--- Section buttons (5 sections)
+-- Section buttons
 local sections = {"Main", "Combat", "Auto-farm", "Visuals", "Settings"}
 local sectionButtons = {}
 local activeSection = nil
 
--- Function to create section content
 local function createSectionContent(sectionName)
     for _, child in pairs(contentFrame:GetChildren()) do
         if child.Name ~= "UICorner" then
@@ -267,9 +267,9 @@ local function createSectionContent(sectionName)
     sectionTitle.Position = UDim2.new(0, 0, 0, 10)
     sectionTitle.BackgroundTransparency = 1
     sectionTitle.Text = sectionName
-    sectionTitle.TextColor3 = Color3.fromRGB(0, 200, 255)
+    sectionTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
     sectionTitle.TextSize = 24
-    sectionTitle.Font = Enum.Font.GothamBold
+    sectionTitle.Font = retroFont
     sectionTitle.TextXAlignment = Enum.TextXAlignment.Center
     sectionTitle.Parent = contentFrame
     
@@ -277,9 +277,9 @@ local function createSectionContent(sectionName)
     placeholderText.Size = UDim2.new(1, 0, 0, 30)
     placeholderText.Position = UDim2.new(0, 0, 0, 60)
     placeholderText.BackgroundTransparency = 1
-    placeholderText.TextColor3 = Color3.fromRGB(150, 150, 200)
+    placeholderText.TextColor3 = Color3.fromRGB(200, 200, 200)
     placeholderText.TextSize = 16
-    placeholderText.Font = Enum.Font.Gotham
+    placeholderText.Font = retroFont
     placeholderText.TextWrapped = true
     placeholderText.Parent = contentFrame
     
@@ -296,18 +296,17 @@ local function createSectionContent(sectionName)
     end
 end
 
--- Create section buttons
 for i, sectionName in ipairs(sections) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.9, 0, 0, 45)
     btn.Position = UDim2.new(0.05, 0, 0, (i-1) * 55 + 10)
     btn.BackgroundColor3 = Color3.fromRGB(30, 30, 55)
-    btn.BackgroundTransparency = 0
+    btn.BackgroundTransparency = 0.2
     btn.BorderSizePixel = 0
     btn.Text = sectionName
-    btn.TextColor3 = Color3.fromRGB(200, 200, 255)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.TextSize = 16
-    btn.Font = Enum.Font.GothamBold
+    btn.Font = retroFont
     btn.Parent = navFrame
     
     local btnCorner = Instance.new("UICorner")
@@ -329,9 +328,9 @@ for i, sectionName in ipairs(sections) do
     btn.MouseButton1Click:Connect(function()
         for _, b in pairs(sectionButtons) do
             b.BackgroundColor3 = Color3.fromRGB(30, 30, 55)
-            b.TextColor3 = Color3.fromRGB(200, 200, 255)
+            b.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
-        btn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+        btn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         activeSection = btn
         createSectionContent(sectionName)
@@ -390,7 +389,6 @@ local function toggleGUI()
         contentFrame.Visible = true
         moonRainContainer.Visible = true
         toggleBtn.Text = "X"
-        toggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
         toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 35, 35)
         isMinimized = false
     else
@@ -402,7 +400,6 @@ local function toggleGUI()
         contentFrame.Visible = false
         moonRainContainer.Visible = false
         toggleBtn.Text = "O"
-        toggleBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
         toggleBtn.BackgroundColor3 = Color3.fromRGB(35, 50, 35)
         isMinimized = true
     end
@@ -412,7 +409,7 @@ toggleBtn.MouseButton1Click:Connect(toggleGUI)
 toggleBtn.TouchTap:Connect(toggleGUI)
 
 -- ============================================
--- LOADING ANIMATION (FIXED)
+-- FIXED LOADING ANIMATION (USES WHILE LOOP)
 -- ============================================
 local loadingSteps = {
     "Initializing Yagami Hub...",
@@ -424,18 +421,17 @@ local loadingSteps = {
     "Welcome to Yagami Hub!"
 }
 
+local percent = 0
 local stepIndex = 1
 
--- FIXED LOADING LOOP
-for percent = 1, 100 do
+-- FIXED: Using while loop instead of for loop
+while percent < 100 do
+    percent = percent + 1
     task.wait(0.02)
     
     -- Update progress bar
     progressFill.Size = UDim2.new(percent / 100, 0, 1, 0)
     percentText.Text = percent .. "%"
-    
-    -- Force GUI refresh
-    RunService.Heartbeat:Wait()
     
     -- Update subtitle
     if percent >= stepIndex * 14 and stepIndex <= #loadingSteps then
@@ -443,9 +439,9 @@ for percent = 1, 100 do
         stepIndex = stepIndex + 1
     end
     
-    -- Update color
-    local hue = 0.55 + (percent / 100) * 0.2
-    progressFill.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+    -- Update color (white shades)
+    local brightness = 0.5 + (percent / 100) * 0.5
+    progressFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 end
 
 -- ============================================
@@ -479,7 +475,7 @@ burst.Parent = mainFrame
 task.wait(0.5)
 burst:Destroy()
 
-print("YAGAMI HUB - Fully Loaded with Moon Rain VFX!")
+print("YAGAMI HUB - Fully Loaded!")
 
 -- ============================================
 -- RE-OPEN HOTKEY (Press R)
