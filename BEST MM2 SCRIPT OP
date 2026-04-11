@@ -1,4 +1,4 @@
---- YAGAMI HUB - WORKING LOADING SCREEN (REWRITTEN)
+--- YAGAMI HUB - FINAL WORKING VERSION
 -- Works on Delta, Synapse, Krnl, ScriptWare, Fluxus, Oxygen U
 
 repeat task.wait() until game:IsLoaded()
@@ -13,15 +13,14 @@ screenGui.Name = "YagamiHub"
 screenGui.Parent = plr:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
 
--- 8-BIT FONT STYLE
 local retroFont = Enum.Font.Gotham
 
 -- ============================================
--- LOADING SCREEN (COMPLETELY REWRITTEN)
+-- LOADING SCREEN
 -- ============================================
 local loadingFrame = Instance.new("Frame")
-loadingFrame.Size = UDim2.new(0, 400, 0, 200)
-loadingFrame.Position = UDim2.new(0.5, -200, 0.5, -100)
+loadingFrame.Size = UDim2.new(0, 450, 0, 250)
+loadingFrame.Position = UDim2.new(0.5, -225, 0.5, -125)
 loadingFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 loadingFrame.BackgroundTransparency = 0.15
 loadingFrame.BorderSizePixel = 0
@@ -42,13 +41,13 @@ loadingTitle.Position = UDim2.new(0, 0, 0, 15)
 loadingTitle.BackgroundTransparency = 1
 loadingTitle.Text = "YAGAMI HUB"
 loadingTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-loadingTitle.TextSize = 24
+loadingTitle.TextSize = 28
 loadingTitle.Font = retroFont
 loadingTitle.Parent = loadingFrame
 
 local progressBg = Instance.new("Frame")
-progressBg.Size = UDim2.new(0.8, 0, 0, 8)
-progressBg.Position = UDim2.new(0.1, 0, 0.55, 0)
+progressBg.Size = UDim2.new(0.8, 0, 0, 10)
+progressBg.Position = UDim2.new(0.1, 0, 0.5, 0)
 progressBg.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
 progressBg.BorderSizePixel = 0
 progressBg.Parent = loadingFrame
@@ -69,23 +68,35 @@ progressFillCorner.Parent = progressFill
 
 local percentText = Instance.new("TextLabel")
 percentText.Size = UDim2.new(0.3, 0, 0, 30)
-percentText.Position = UDim2.new(0.35, 0, 0.7, 0)
+percentText.Position = UDim2.new(0.35, 0, 0.65, 0)
 percentText.BackgroundTransparency = 1
 percentText.Text = "0%"
 percentText.TextColor3 = Color3.fromRGB(255, 255, 255)
-percentText.TextSize = 18
+percentText.TextSize = 20
 percentText.Font = retroFont
 percentText.Parent = loadingFrame
 
 local subText = Instance.new("TextLabel")
 subText.Size = UDim2.new(0.9, 0, 0, 25)
-subText.Position = UDim2.new(0.05, 0, 0.82, 0)
+subText.Position = UDim2.new(0.05, 0, 0.78, 0)
 subText.BackgroundTransparency = 1
 subText.Text = "Initializing..."
 subText.TextColor3 = Color3.fromRGB(200, 200, 200)
 subText.TextSize = 14
 subText.Font = retroFont
 subText.Parent = loadingFrame
+
+-- Access Granted Text (hidden initially)
+local accessText = Instance.new("TextLabel")
+accessText.Size = UDim2.new(0.6, 0, 0, 40)
+accessText.Position = UDim2.new(0.2, 0, 0.85, 0)
+accessText.BackgroundTransparency = 1
+accessText.Text = "ACCESS GRANTED."
+accessText.TextColor3 = Color3.fromRGB(0, 255, 100)
+accessText.TextSize = 18
+accessText.Font = retroFont
+accessText.Visible = false
+accessText.Parent = loadingFrame
 
 -- ============================================
 -- MAIN GUI
@@ -387,12 +398,8 @@ toggleBtn.MouseButton1Click:Connect(toggleGUI)
 toggleBtn.TouchTap:Connect(toggleGUI)
 
 -- ============================================
--- LOADING SEQUENCE (100% WORKING)
+-- LOADING SEQUENCE (USES SIMPLE TIMER)
 -- ============================================
-
--- Method 1: Simple counter that definitely works
-local loadProgress = 0
-local stepIndex = 1
 
 local loadingMessages = {
     "Initializing Yagami Hub...",
@@ -401,37 +408,54 @@ local loadingMessages = {
     "Setting up UI...",
     "Loading modules...",
     "Almost ready...",
-    "Welcome to Yagami Hub!"
+    "Verifying access..."
 }
 
--- Create a loop that updates every frame
-local function updateLoading()
-    loadProgress = loadProgress + 1
-    
-    if loadProgress <= 100 then
-        -- Update progress bar
-        progressFill.Size = UDim2.new(loadProgress / 100, 0, 1, 0)
-        percentText.Text = loadProgress .. "%"
+local currentPercent = 0
+local messageIndex = 1
+
+-- Update progress every 0.03 seconds using a simple timer
+local timer = 0
+local function updateLoading(deltaTime)
+    if currentPercent >= 100 then
+        -- Show access granted and flicker
+        accessText.Visible = true
         
-        -- Update message every 14%
-        local messageIndex = math.floor(loadProgress / 14) + 1
-        if messageIndex <= #loadingMessages and messageIndex ~= stepIndex then
-            stepIndex = messageIndex
-            subText.Text = loadingMessages[messageIndex]
+        -- Flicker effect (5 times)
+        local flickerCount = 0
+        local function flicker()
+            if flickerCount < 10 then
+                accessText.TextTransparency = flickerCount % 2 == 0 and 0 or 0.7
+                flickerCount = flickerCount + 1
+                task.wait(0.08)
+                flicker()
+            else
+                accessText.TextTransparency = 0
+                task.wait(0.3)
+                transitionToMain()
+            end
         end
-        
-        -- Continue loading
-        task.spawn(function()
-            task.wait(0.02)
-            updateLoading()
-        end)
-    else
-        -- Loading complete, transition to main GUI
-        transitionToMain()
+        flicker()
+        return
     end
+    
+    -- Increase progress
+    currentPercent = currentPercent + 1
+    progressFill.Size = UDim2.new(currentPercent / 100, 0, 1, 0)
+    percentText.Text = currentPercent .. "%"
+    
+    -- Update message
+    local newMessageIndex = math.floor(currentPercent / 14) + 1
+    if newMessageIndex <= #loadingMessages and newMessageIndex ~= messageIndex then
+        messageIndex = newMessageIndex
+        subText.Text = loadingMessages[messageIndex]
+    end
+    
+    -- Schedule next update
+    task.wait(0.02)
+    updateLoading()
 end
 
--- Function to transition to main GUI
 function transitionToMain()
     -- Hide loading frame with animation
     local hideTween = TweenService:Create(loadingFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
@@ -442,7 +466,7 @@ function transitionToMain()
     task.wait(0.3)
     loadingFrame.Visible = false
     
-    -- Show main GUI with pop animation
+    -- Show main GUI
     mainFrame.Visible = true
     mainFrame.Size = UDim2.new(0, 0, 0, 0)
     
@@ -451,16 +475,15 @@ function transitionToMain()
     })
     showTween:Play()
     
-    -- Default select Main section
-    task.wait(0.1)
+    task.wait(0.2)
     if sectionButtons["Main"] then
         sectionButtons["Main"].MouseButton1Click:Fire()
     end
     
-    print("YAGAMI HUB - Successfully Loaded!")
+    print("YAGAMI HUB - Access Granted!")
 end
 
--- Start the loading sequence
+-- Start loading
 updateLoading()
 
 -- ============================================
