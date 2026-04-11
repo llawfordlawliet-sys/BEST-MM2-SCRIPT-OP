@@ -1,4 +1,4 @@
---- YAGAMI HUB - FINAL WORKING VERSION
+-- YAGAMI HUB - FINAL WORKING VERSION
 -- Works on Delta, Synapse, Krnl, ScriptWare, Fluxus, Oxygen U
 
 repeat task.wait() until game:IsLoaded()
@@ -6,6 +6,8 @@ repeat task.wait() until game:IsLoaded()
 local plr = game:GetService("Players").LocalPlayer
 local UserInput = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 -- Create GUI
 local screenGui = Instance.new("ScreenGui")
@@ -241,50 +243,369 @@ local contentCorner = Instance.new("UICorner")
 contentCorner.CornerRadius = UDim.new(0, 8)
 contentCorner.Parent = contentFrame
 
--- Section buttons
+-- ============================================
+-- AUTO FARM COINS VARIABLES
+-- ============================================
+local autoFarmEnabled = false
+local farmConnection = nil
+local currentTarget = nil
+local targetCooldown = false
+local COINS_WALKSPEED = 25
+
+-- Function to get all coin parts in the underground area
+local function getUndergroundCoins()
+    local coins = {}
+    -- Look for coin parts with common names (customize based on your game)
+    local possibleCoinNames = {"Coin", "Money", "Gem", "Crystal", "Token", "Collectible"}
+    
+    for _, descendant in ipairs(Workspace:GetDescendants()) do
+        if descendant:IsA("BasePart") and descendant.Parent then
+            local nameLower = descendant.Name:lower()
+            local isValidCoin = false
+            
+            -- Check if it's a coin by name or tag
+            for _, coinName in ipairs(possibleCoinNames) do
+                if nameLower:find(coinName:lower()) then
+                    isValidCoin = true
+                    break
+                end
+            end
+            
+            -- Also check for a "Coin" tag or custom attribute
+            if not isValidCoin and descendant:IsA("BasePart") then
+                if descendant:GetAttribute("Coin") or descendant:GetAttribute("Collectible") then
+                    isValidCoin = true
+                end
+            end
+            
+            if isValidCoin and descendant ~= currentTarget then
+                -- Check if coin is underground (Y position less than a threshold, adjust as needed)
+                -- For underground, check if Y is low or if it's in a cave zone
+                local isUnderground = descendant.Position.Y < 50 -- Adjust this threshold based on your game
+                
+                if isUnderground and descendant:FindFirstChild("TouchInterest") then
+                    table.insert(coins, descendant)
+                end
+            end
+        end
+    end
+    
+    return coins
+end
+
+-- Function to walk to a target without teleporting or flying
+local function walkToTarget(target)
+    if not target or not target.Parent then return false end
+    
+    local character = plr.Character
+    if not character then return false end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not rootPart then return false end
+    
+    -- Store original walkspeed
+    local originalWalkSpeed = humanoid.WalkSpeed
+    
+    -- Set to desired walkspeed
+    humanoid.WalkSpeed = COINS_WALKSPEED
+    
+    -- Calculate direction to target
+    local targetPos = target.Position
+    local direction = (targetPos - rootPart.Position).Unit
+    local distance = (targetPos - rootPart.Position).Magnitude
+    
+    -- Move towards target
+    humanoid:MoveTo(targetPos)
+    
+    -- Wait until we get close or timeout
+    local timeout = 10 -- seconds
+    local startTime = tick()
+    
+    repeat
+        task.wait(0.1)
+        local currentDist = (targetPos - rootPart.Position).Magnitude
+        
+        -- If we're close enough, collect the coin
+        if currentDist <= 5 then
+            humanoid:MoveTo(rootPart.Position) -- Stop moving
+            return true
+        end
+        
+        -- Re-update move direction
+        if currentDist > 5 then
+            humanoid:MoveTo(targetPos)
+        end
+        
+    until not target.Parent or not autoFarmEnabled or (tick() - startTime) > timeout
+    
+    -- Reset walkspeed
+    humanoid.WalkSpeed = originalWalkSpeed
+    return false
+end
+
+-- Main auto-farm loop
+local function startAutoFarm()
+    if farmConnection then farmConnection:Disconnect() end
+    
+    farmConnection = RunService.Heartbeat:Connect(function()
+        if not autoFarmEnabled then return end
+        
+        local character = plr.Character
+        if not character then return end
+        
+        local humanoid = character:FindFirstChild("Humanoid")
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        if not humanoid or not rootPart then return end
+        
+        -- Don't get new target if on cooldown or currently moving to a target
+        if targetCooldown or currentTarget then return end
+        
+        -- Find all underground coins
+        local coins = getUndergroundCoins()
+        
+        if #coins > 0 then
+            -- Find closest coin
+            local closestCoin = nil
+            local closestDist = math.huge
+            
+            for _, coin in ipairs(coins) do
+                local dist = (coin.Position - rootPart.Position).Magnitude
+                if dist < closestDist then
+                    closestDist = dist
+                    closestCoin = coin
+                end
+            end
+            
+            if closestCoin then
+                currentTarget = closestCoin
+                
+                -- Walk to the coin
+                local success = walkToTarget(currentTarget)
+                
+                if success and currentTarget and currentTarget.Parent then
+                    -- Simulate touching the coin (if touch isn't automatic)
+                    local touchInterest = currentTarget:FindFirstChild("TouchInterest")
+                    if touchInterest then
+                        -- Fire touch event
+                        local args = {character:FindFirstChild("HumanoidRootPart")}
+                        touchInterest:FireServer(unpack(args))
+                    end
+                    
+                    -- Destroy or remove the coin (depends on game)
+                    -- currentTarget:Destroy() -- Uncomment if coins need to be destroyed
+                end
+                
+                -- Cooldown before next target
+                targetCooldown = true
+                task.wait(0.5)
+                targetCooldown = false
+                currentTarget = nil
+            end
+        end
+    end)
+end
+
+local function stopAutoFarm()
+    if farmConnection then
+        farmConnection:Disconnect()
+        farmConnection = nil
+    end
+    
+    -- Reset walkspeed to default
+    local character = plr.Character
+    if character then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 16 -- Default walkspeed
+        end
+    end
+    
+    currentTarget = nil
+    targetCooldown = false
+end
+
+-- ============================================
+-- SECTION CONTENT CREATION
+-- ============================================
 local sections = {"Main", "Combat", "Auto-farm", "Visuals", "Settings"}
 local sectionButtons = {}
 local activeSection = nil
 
 local function createSectionContent(sectionName)
     for _, child in pairs(contentFrame:GetChildren()) do
-        if child.Name ~= "UICorner" then
+        if child.Name ~= "UICorner" and child.Name ~= "UIListLayout" then
             child:Destroy()
         end
     end
     
+    -- Create a scrolling frame for content
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, 0, 1, -50)
+    scrollFrame.Position = UDim2.new(0, 0, 0, 50)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scrollFrame.ScrollBarThickness = 6
+    scrollFrame.Parent = contentFrame
+    
+    local uiList = Instance.new("UIListLayout")
+    uiList.Padding = UDim.new(0, 10)
+    uiList.SortOrder = Enum.SortOrder.LayoutOrder
+    uiList.Parent = scrollFrame
+    
     local sectionTitle = Instance.new("TextLabel")
     sectionTitle.Size = UDim2.new(1, 0, 0, 40)
-    sectionTitle.Position = UDim2.new(0, 0, 0, 10)
     sectionTitle.BackgroundTransparency = 1
     sectionTitle.Text = sectionName
     sectionTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
     sectionTitle.TextSize = 24
     sectionTitle.Font = retroFont
     sectionTitle.TextXAlignment = Enum.TextXAlignment.Center
-    sectionTitle.Parent = contentFrame
-    
-    local placeholderText = Instance.new("TextLabel")
-    placeholderText.Size = UDim2.new(1, 0, 0, 30)
-    placeholderText.Position = UDim2.new(0, 0, 0, 60)
-    placeholderText.BackgroundTransparency = 1
-    placeholderText.TextColor3 = Color3.fromRGB(200, 200, 200)
-    placeholderText.TextSize = 16
-    placeholderText.Font = retroFont
-    placeholderText.TextWrapped = true
-    placeholderText.Parent = contentFrame
+    sectionTitle.Parent = scrollFrame
     
     if sectionName == "Main" then
-        placeholderText.Text = "Main Hub Functions\n\n- Player Info\n- Server Info\n- Rejoin\n- Server Hop"
+        local infoText = Instance.new("TextLabel")
+        infoText.Size = UDim2.new(1, 0, 0, 120)
+        infoText.BackgroundTransparency = 1
+        infoText.TextColor3 = Color3.fromRGB(200, 200, 200)
+        infoText.TextSize = 16
+        infoText.Font = retroFont
+        infoText.TextWrapped = true
+        infoText.Text = "Main Hub Functions\n\n- Player Info: " .. plr.Name .. "\n- Server Time: " .. os.date("%H:%M:%S") .. "\n- Rejoin: Press R to reopen GUI"
+        infoText.Parent = scrollFrame
+        
     elseif sectionName == "Combat" then
-        placeholderText.Text = "Combat Features\n\n- Aim Assist\n- Trigger Bot\n- Silent Aim\n- Anti-Aim"
+        local combatText = Instance.new("TextLabel")
+        combatText.Size = UDim2.new(1, 0, 0, 150)
+        combatText.BackgroundTransparency = 1
+        combatText.TextColor3 = Color3.fromRGB(200, 200, 200)
+        combatText.TextSize = 16
+        combatText.Font = retroFont
+        combatText.TextWrapped = true
+        combatText.Text = "Combat Features\n\n- Aim Assist: COMING SOON\n- Trigger Bot: COMING SOON\n- Silent Aim: COMING SOON\n- Anti-Aim: COMING SOON"
+        combatText.Parent = scrollFrame
+        
     elseif sectionName == "Auto-farm" then
-        placeholderText.Text = "Auto-Farm Features\n\n- Auto Farm\n- Auto Collect\n- Auto Quest\n- Auto Sell"
+        -- Auto-farm toggle button
+        local toggleFrame = Instance.new("Frame")
+        toggleFrame.Size = UDim2.new(1, -20, 0, 50)
+        toggleFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+        toggleFrame.BackgroundTransparency = 0.3
+        toggleFrame.BorderSizePixel = 0
+        toggleFrame.Parent = scrollFrame
+        
+        local toggleCorner = Instance.new("UICorner")
+        toggleCorner.CornerRadius = UDim.new(0, 8)
+        toggleCorner.Parent = toggleFrame
+        
+        local toggleLabel = Instance.new("TextLabel")
+        toggleLabel.Size = UDim2.new(0.6, 0, 1, 0)
+        toggleLabel.Position = UDim2.new(0.05, 0, 0, 0)
+        toggleLabel.BackgroundTransparency = 1
+        toggleLabel.Text = "Auto Farm Underground Coins"
+        toggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        toggleLabel.TextSize = 16
+        toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        toggleLabel.Font = retroFont
+        toggleLabel.Parent = toggleFrame
+        
+        local toggleButton = Instance.new("TextButton")
+        toggleButton.Size = UDim2.new(0, 80, 0, 35)
+        toggleButton.Position = UDim2.new(0.8, 0, 0.5, -17.5)
+        toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+        toggleButton.BorderSizePixel = 0
+        toggleButton.Text = "OFF"
+        toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        toggleButton.TextSize = 16
+        toggleButton.Font = retroFont
+        toggleButton.Parent = toggleFrame
+        
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 6)
+        btnCorner.Parent = toggleButton
+        
+        local statusLabel = Instance.new("TextLabel")
+        statusLabel.Size = UDim2.new(1, 0, 0, 30)
+        statusLabel.Position = UDim2.new(0, 0, 0, 60)
+        statusLabel.BackgroundTransparency = 1
+        statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        statusLabel.TextSize = 14
+        statusLabel.Font = retroFont
+        statusLabel.Text = "Status: Idle"
+        statusLabel.Parent = scrollFrame
+        
+        local infoLabel = Instance.new("TextLabel")
+        infoLabel.Size = UDim2.new(1, 0, 0, 80)
+        infoLabel.Position = UDim2.new(0, 0, 0, 100)
+        infoLabel.BackgroundTransparency = 1
+        infoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        infoLabel.TextSize = 14
+        infoLabel.Font = retroFont
+        infoLabel.TextWrapped = true
+        infoLabel.Text = "Info: Will walk to underground coins at speed " .. COINS_WALKSPEED .. ". Does NOT teleport or fly."
+        infoLabel.Parent = scrollFrame
+        
+        -- Toggle button logic
+        local isFarming = false
+        toggleButton.MouseButton1Click:Connect(function()
+            if isFarming then
+                autoFarmEnabled = false
+                stopAutoFarm()
+                toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+                toggleButton.Text = "OFF"
+                statusLabel.Text = "Status: Idle"
+                statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+                isFarming = false
+            else
+                autoFarmEnabled = true
+                startAutoFarm()
+                toggleButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+                toggleButton.Text = "ON"
+                statusLabel.Text = "Status: Farming underground coins..."
+                statusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+                isFarming = true
+            end
+        end)
+        
     elseif sectionName == "Visuals" then
-        placeholderText.Text = "Visual Enhancements\n\n- ESP\n- Chams\n- Tracers\n- FOV Changer"
+        local visualsText = Instance.new("TextLabel")
+        visualsText.Size = UDim2.new(1, 0, 0, 150)
+        visualsText.BackgroundTransparency = 1
+        visualsText.TextColor3 = Color3.fromRGB(200, 200, 200)
+        visualsText.TextSize = 16
+        visualsText.Font = retroFont
+        visualsText.TextWrapped = true
+        visualsText.Text = "Visual Enhancements\n\n- ESP: COMING SOON\n- Chams: COMING SOON\n- Tracers: COMING SOON\n- FOV Changer: COMING SOON"
+        visualsText.Parent = scrollFrame
+        
     elseif sectionName == "Settings" then
-        placeholderText.Text = "Settings\n\n- GUI Settings\n- Keybinds\n- Save Config\n- Load Config"
+        local settingsText = Instance.new("TextLabel")
+        settingsText.Size = UDim2.new(1, 0, 0, 150)
+        settingsText.BackgroundTransparency = 1
+        settingsText.TextColor3 = Color3.fromRGB(200, 200, 200)
+        settingsText.TextSize = 16
+        settingsText.Font = retroFont
+        settingsText.TextWrapped = true
+        settingsText.Text = "Settings\n\n- GUI Settings: Press R to toggle\n- Keybinds: R to reopen GUI\n- Save Config: COMING SOON\n- Load Config: COMING SOON"
+        settingsText.Parent = scrollFrame
     end
+    
+    -- Update canvas size
+    local function updateCanvas()
+        local totalHeight = 0
+        for _, child in pairs(scrollFrame:GetChildren()) do
+            if child:IsA("GuiObject") and child ~= scrollFrame then
+                totalHeight = totalHeight + child.Size.Y.Offset + (uiList.Padding.Offset or 10)
+            end
+        end
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight + 20)
+    end
+    
+    uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
+    task.wait(0.1)
+    updateCanvas()
 end
 
 for i, sectionName in ipairs(sections) do
@@ -398,7 +719,7 @@ toggleBtn.MouseButton1Click:Connect(toggleGUI)
 toggleBtn.TouchTap:Connect(toggleGUI)
 
 -- ============================================
--- LOADING SEQUENCE (USES SIMPLE TIMER)
+-- LOADING SEQUENCE
 -- ============================================
 
 local loadingMessages = {
@@ -414,14 +735,10 @@ local loadingMessages = {
 local currentPercent = 0
 local messageIndex = 1
 
--- Update progress every 0.03 seconds using a simple timer
-local timer = 0
-local function updateLoading(deltaTime)
+local function updateLoading()
     if currentPercent >= 100 then
-        -- Show access granted and flicker
         accessText.Visible = true
         
-        -- Flicker effect (5 times)
         local flickerCount = 0
         local function flicker()
             if flickerCount < 10 then
@@ -439,25 +756,21 @@ local function updateLoading(deltaTime)
         return
     end
     
-    -- Increase progress
     currentPercent = currentPercent + 1
     progressFill.Size = UDim2.new(currentPercent / 100, 0, 1, 0)
     percentText.Text = currentPercent .. "%"
     
-    -- Update message
     local newMessageIndex = math.floor(currentPercent / 14) + 1
     if newMessageIndex <= #loadingMessages and newMessageIndex ~= messageIndex then
         messageIndex = newMessageIndex
         subText.Text = loadingMessages[messageIndex]
     end
     
-    -- Schedule next update
     task.wait(0.02)
     updateLoading()
 end
 
 function transitionToMain()
-    -- Hide loading frame with animation
     local hideTween = TweenService:Create(loadingFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
         Size = UDim2.new(0, 0, 0, 0)
     })
@@ -466,7 +779,6 @@ function transitionToMain()
     task.wait(0.3)
     loadingFrame.Visible = false
     
-    -- Show main GUI
     mainFrame.Visible = true
     mainFrame.Size = UDim2.new(0, 0, 0, 0)
     
@@ -483,7 +795,6 @@ function transitionToMain()
     print("YAGAMI HUB - Access Granted!")
 end
 
--- Start loading
 updateLoading()
 
 -- ============================================
@@ -507,5 +818,13 @@ UserInput.InputBegan:Connect(function(input, gameProcessed)
                 sectionButtons["Main"].MouseButton1Click:Fire()
             end
         end
+    end
+end)
+
+-- Cleanup on player leave
+plr.CharacterAdded:Connect(function()
+    if autoFarmEnabled then
+        task.wait(1)
+        startAutoFarm()
     end
 end)
