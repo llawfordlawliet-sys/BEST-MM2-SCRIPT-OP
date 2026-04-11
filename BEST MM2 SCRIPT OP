@@ -1,144 +1,93 @@
--- UNIVERSAL GUI LOADING SCREEN WITH SOUND & VISUAL EFFECTS
--- Works on: Delta, Synapse X, Krnl, ScriptWare, Fluxus, Oxygen U, etc.
--- All effects are LOCAL-ONLY (only visible/hearable to the executor)
+-- YAGAMI HUB - UNIVERSAL GUI
+-- Works on Delta, Synapse X, Krnl, and all executors
+-- Supports Mobile & PC with DRAGGABLE functionality
 
--- Wait for game to load
 repeat task.wait() until game:IsLoaded()
 
 local player = game:GetService("Players").LocalPlayer
+local mouse = player:GetMouse()
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+-- Create GUI
 local gui = Instance.new("ScreenGui")
-gui.Name = "UniversalLoadingGUI"
+gui.Name = "YagamiHub"
 gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = player:WaitForChild("PlayerGui")
 
--- Create loading frame
+-- ========== MINI LOADING RECTANGLE ==========
 local loadingFrame = Instance.new("Frame")
 loadingFrame.Name = "LoadingFrame"
-loadingFrame.Size = UDim2.new(1, 0, 1, 0)
-loadingFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 20)
+loadingFrame.Size = UDim2.new(0, 400, 0, 250)
+loadingFrame.Position = UDim2.new(0.5, -200, 0.5, -125)
+loadingFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
 loadingFrame.BackgroundTransparency = 0
+loadingFrame.BorderSizePixel = 0
+loadingFrame.ClipsDescendants = true
 loadingFrame.Parent = gui
 
--- Create main menu frame (hidden initially)
-local mainMenuFrame = Instance.new("Frame")
-mainMenuFrame.Name = "MainMenuFrame"
-mainMenuFrame.Size = UDim2.new(1, 0, 1, 0)
-mainMenuFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 25)
-mainMenuFrame.BackgroundTransparency = 0
-mainMenuFrame.Visible = false
-mainMenuFrame.Parent = gui
+-- Rounded corners (works on all executors)
+local loadingCorner = Instance.new("UICorner")
+loadingCorner.CornerRadius = UDim.new(0, 15)
+loadingCorner.Parent = loadingFrame
 
--- ========== LOCAL SOUNDS (works on all executors) ==========
-local function createLocalSound(parent, soundId, volume, looped)
-    local sound = Instance.new("Sound")
-    sound.Volume = volume or 0.5
-    sound.Looped = looped or false
-    sound.Parent = parent
-    -- Use a default sound if ID not provided (silent fallback)
-    if soundId and soundId ~= "" then
-        pcall(function()
-            sound.SoundId = soundId
-        end)
-    end
-    return sound
-end
+-- Glow border
+local loadingBorder = Instance.new("UIStroke")
+loadingBorder.Color = Color3.fromRGB(0, 200, 255)
+loadingBorder.Thickness = 2
+loadingBorder.Transparency = 0.3
+loadingBorder.Parent = loadingFrame
 
--- Create sound instances
-local loadingSound = createLocalSound(loadingFrame, "", 0.4, true)
-local transitionSound = createLocalSound(gui, "", 0.6, false)
-local clickSound = createLocalSound(gui, "", 0.4, false)
-
--- Optional: Use built-in Roblox sounds if no custom IDs
-pcall(function()
-    loadingSound.SoundId = "rbxassetid://9120386436" -- Ambient sound (replace with your ID)
-end)
-pcall(function()
-    transitionSound.SoundId = "rbxassetid://9120386436" -- Transition sound (replace)
-end)
-pcall(function()
-    clickSound.SoundId = "rbxassetid://9120386436" -- Click sound (replace)
-end)
-
--- ========== LOCAL VISUAL EFFECTS ==========
--- Background gradient
+-- Gradient background
 local loadingGradient = Instance.new("UIGradient")
 loadingGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(15, 15, 35)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(35, 15, 55)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 35))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 40)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(40, 20, 60)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 40))
 })
 loadingGradient.Rotation = 45
 loadingGradient.Parent = loadingFrame
 
--- Particle effect (local-only)
-local particleEmitter = Instance.new("ParticleEmitter")
-particleEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-particleEmitter.Rate = 50
-particleEmitter.SpreadAngle = Vector2.new(360, 360)
-particleEmitter.Lifetime = NumberRange.new(1, 2)
-particleEmitter.Speed = NumberRange.new(5, 15)
-particleEmitter.Transparency = NumberSequence.new(1, 0.7, 0)
-particleEmitter.Color = ColorSequence.new(Color3.fromRGB(100, 200, 255), Color3.fromRGB(255, 100, 200))
-particleEmitter.Size = NumberSequence.new(2, 1)
-particleEmitter.Parent = loadingFrame
-
--- Animated circle glow
-local glowCircle = Instance.new("ImageLabel")
-glowCircle.Size = UDim2.new(0, 200, 0, 200)
-glowCircle.Position = UDim2.new(0.5, -100, 0.5, -100)
-glowCircle.BackgroundTransparency = 1
-glowCircle.Image = "rbxassetid://266795589"
-glowCircle.ImageTransparency = 0.6
-glowCircle.Parent = loadingFrame
-
--- Loading title
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, 0, 0.2, 0)
-titleLabel.Position = UDim2.new(0, 0, 0.25, 0)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "LOADING"
-titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleLabel.TextScaled = true
-titleLabel.Font = Enum.Font.GothamBold
-titleLabel.TextStrokeTransparency = 0.4
-titleLabel.TextStrokeColor3 = Color3.fromRGB(0, 150, 255)
-titleLabel.Parent = loadingFrame
-
--- Title glow effect
-local titleGlow = Instance.new("UIStroke")
-titleGlow.Color = Color3.fromRGB(0, 200, 255)
-titleGlow.Thickness = 4
-titleGlow.Transparency = 0.2
-titleGlow.Parent = titleLabel
+-- Title
+local loadingTitle = Instance.new("TextLabel")
+loadingTitle.Size = UDim2.new(1, 0, 0, 40)
+loadingTitle.Position = UDim2.new(0, 0, 0, 10)
+loadingTitle.BackgroundTransparency = 1
+loadingTitle.Text = "YAGAMI HUB"
+loadingTitle.TextColor3 = Color3.fromRGB(0, 200, 255)
+loadingTitle.TextScaled = true
+loadingTitle.Font = Enum.Font.GothamBold
+loadingTitle.TextStrokeTransparency = 0.3
+loadingTitle.Parent = loadingFrame
 
 -- Progress bar background
 local progressBg = Instance.new("Frame")
-progressBg.Size = UDim2.new(0.5, 0, 0.04, 0)
-progressBg.Position = UDim2.new(0.25, 0, 0.6, 0)
-progressBg.BackgroundColor3 = Color3.fromRGB(25, 25, 45)
+progressBg.Size = UDim2.new(0.8, 0, 0, 8)
+progressBg.Position = UDim2.new(0.1, 0, 0.6, 0)
+progressBg.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
 progressBg.BorderSizePixel = 0
 progressBg.Parent = loadingFrame
 
--- Progress bar fill
+local progressCorner = Instance.new("UICorner")
+progressCorner.CornerRadius = UDim.new(1, 0)
+progressCorner.Parent = progressBg
+
+-- Progress fill
 local progressFill = Instance.new("Frame")
 progressFill.Size = UDim2.new(0, 0, 1, 0)
 progressFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
 progressFill.BorderSizePixel = 0
 progressFill.Parent = progressBg
 
--- Progress gradient
-local fillGradient = Instance.new("UIGradient")
-fillGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 150, 255)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 200, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 150, 255))
-})
-fillGradient.Parent = progressFill
+local fillCorner = Instance.new("UICorner")
+fillCorner.CornerRadius = UDim.new(1, 0)
+fillCorner.Parent = progressFill
 
 -- Percentage text
 local percentText = Instance.new("TextLabel")
-percentText.Size = UDim2.new(0.2, 0, 0.08, 0)
-percentText.Position = UDim2.new(0.4, 0, 0.68, 0)
+percentText.Size = UDim2.new(0.3, 0, 0, 30)
+percentText.Position = UDim2.new(0.35, 0, 0.75, 0)
 percentText.BackgroundTransparency = 1
 percentText.Text = "0%"
 percentText.TextColor3 = Color3.fromRGB(200, 200, 255)
@@ -148,8 +97,8 @@ percentText.Parent = loadingFrame
 
 -- Loading subtitle
 local subtitleText = Instance.new("TextLabel")
-subtitleText.Size = UDim2.new(0.6, 0, 0.05, 0)
-subtitleText.Position = UDim2.new(0.2, 0, 0.75, 0)
+subtitleText.Size = UDim2.new(0.8, 0, 0, 25)
+subtitleText.Position = UDim2.new(0.1, 0, 0.85, 0)
 subtitleText.BackgroundTransparency = 1
 subtitleText.Text = "Initializing..."
 subtitleText.TextColor3 = Color3.fromRGB(150, 150, 200)
@@ -157,203 +106,277 @@ subtitleText.TextScaled = true
 subtitleText.Font = Enum.Font.Gotham
 subtitleText.Parent = loadingFrame
 
--- ========== ANIMATION FUNCTIONS (works on all executors) ==========
-local TweenService = game:GetService("TweenService")
+-- Particle effect inside loading frame
+local particleEmitter = Instance.new("ParticleEmitter")
+particleEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+particleEmitter.Rate = 30
+particleEmitter.SpreadAngle = Vector2.new(180, 180)
+particleEmitter.Lifetime = NumberRange.new(0.8, 1.5)
+particleEmitter.Speed = NumberRange.new(3, 10)
+particleEmitter.Transparency = NumberSequence.new(1, 0.5, 0)
+particleEmitter.Color = ColorSequence.new(Color3.fromRGB(0, 200, 255), Color3.fromRGB(255, 100, 200))
+particleEmitter.Size = NumberSequence.new(1.5, 0.5)
+particleEmitter.Parent = loadingFrame
 
-local function animateGlow()
-    local tween = TweenService:Create(glowCircle, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {Rotation = 360})
-    tween:Play()
+-- ========== MAIN GUI (BIG RECTANGLE) ==========
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 600, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
+mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+mainFrame.BackgroundTransparency = 0
+mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
+mainFrame.Visible = false
+mainFrame.Parent = gui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 12)
+mainCorner.Parent = mainFrame
+
+local mainBorder = Instance.new("UIStroke")
+mainBorder.Color = Color3.fromRGB(0, 200, 255)
+mainBorder.Thickness = 2
+mainBorder.Transparency = 0.2
+mainBorder.Parent = mainFrame
+
+local mainGradient = Instance.new("UIGradient")
+mainGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(15, 15, 35)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(35, 15, 55)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 35))
+})
+mainGradient.Parent = mainFrame
+
+-- Title bar (for dragging)
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 45)
+titleBar.Position = UDim2.new(0, 0, 0, 0)
+titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+titleBar.BackgroundTransparency = 0
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
+local titleBarCorner = Instance.new("UICorner")
+titleBarCorner.CornerRadius = UDim.new(0, 12)
+titleBarCorner.Parent = titleBar
+
+-- Title text
+local mainTitle = Instance.new("TextLabel")
+mainTitle.Size = UDim2.new(0.7, 0, 1, 0)
+mainTitle.Position = UDim2.new(0.05, 0, 0, 0)
+mainTitle.BackgroundTransparency = 1
+mainTitle.Text = "YAGAMI HUB"
+mainTitle.TextColor3 = Color3.fromRGB(0, 200, 255)
+mainTitle.TextXAlignment = Enum.TextXAlignment.Left
+mainTitle.TextSize = 22
+mainTitle.Font = Enum.Font.GothamBold
+mainTitle.TextStrokeTransparency = 0.3
+mainTitle.Parent = titleBar
+
+-- CLOSE BUTTON (X)
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 40, 1, 0)
+closeButton.Position = UDim2.new(1, -40, 0, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(40, 30, 30)
+closeButton.BackgroundTransparency = 0
+closeButton.BorderSizePixel = 0
+closeButton.Text = "✕"
+closeButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+closeButton.TextSize = 24
+closeButton.Font = Enum.Font.GothamBold
+closeButton.Parent = titleBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 8)
+closeCorner.Parent = closeButton
+
+-- MINIMIZE BUTTON (O) - shrinks to title
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Size = UDim2.new(0, 40, 1, 0)
+minimizeButton.Position = UDim2.new(1, -85, 0, 0)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+minimizeButton.BackgroundTransparency = 0
+minimizeButton.BorderSizePixel = 0
+minimizeButton.Text = "○"
+minimizeButton.TextColor3 = Color3.fromRGB(200, 200, 100)
+minimizeButton.TextSize = 24
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.Parent = titleBar
+
+local minimizeCorner = Instance.new("UICorner")
+minimizeCorner.CornerRadius = UDim.new(0, 8)
+minimizeCorner.Parent = minimizeButton
+
+-- Content frame (for future functions)
+local contentFrame = Instance.new("Frame")
+contentFrame.Size = UDim2.new(1, -20, 1, -65)
+contentFrame.Position = UDim2.new(0, 10, 0, 55)
+contentFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
+contentFrame.BackgroundTransparency = 0.5
+contentFrame.BorderSizePixel = 0
+contentFrame.Parent = mainFrame
+
+local contentCorner = Instance.new("UICorner")
+contentCorner.CornerRadius = UDim.new(0, 8)
+contentCorner.Parent = contentFrame
+
+-- Placeholder text
+local placeholderText = Instance.new("TextLabel")
+placeholderText.Size = UDim2.new(1, 0, 1, 0)
+placeholderText.BackgroundTransparency = 1
+placeholderText.Text = "No functions added yet\nComing soon..."
+placeholderText.TextColor3 = Color3.fromRGB(150, 150, 200)
+placeholderText.TextSize = 18
+placeholderText.Font = Enum.Font.Gotham
+placeholderText.TextWrapped = true
+placeholderText.Parent = contentFrame
+
+-- ========== DRAG FUNCTIONALITY (Supports Mobile & PC) ==========
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+local function updateDrag(input)
+    local delta = input.Position - dragStart
+    local newPosition = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    mainFrame.Position = newPosition
 end
 
-local function pulseTitle()
-    local tween = TweenService:Create(titleLabel, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {TextStrokeTransparency = 0.1})
-    tween:Play()
-end
-
--- ========== SIMULATED LOADING (replace with your actual loading) ==========
-local loadingSteps = {
-    {text = "Initializing...", percent = 10},
-    {text = "Loading assets...", percent = 25},
-    {text = "Connecting to server...", percent = 40},
-    {text = "Setting up environment...", percent = 55},
-    {text = "Preparing UI...", percent = 70},
-    {text = "Almost ready...", percent = 85},
-    {text = "Finalizing...", percent = 95},
-    {text = "Welcome!", percent = 100}
-}
-
-local function startLoading()
-    -- Play loading sound
-    pcall(function() loadingSound:Play() end)
-    
-    -- Start animations
-    animateGlow()
-    pulseTitle()
-    
-    local currentStep = 1
-    
-    -- Loading loop
-    for percent = 1, 100 do
-        task.wait(0.025) -- ~2.5 seconds total loading time
-        
-        -- Update progress bar
-        progressFill.Size = UDim2.new(percent / 100, 0, 1, 0)
-        percentText.Text = percent .. "%"
-        
-        -- Update subtitle based on progress
-        if currentStep <= #loadingSteps and percent >= loadingSteps[currentStep].percent then
-            subtitleText.Text = loadingSteps[currentStep].text
-            currentStep = currentStep + 1
-        end
-        
-        -- Pulse effect on progress bar
-        local hue = 0.55 + (percent / 100) * 0.2
-        progressFill.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
-        
-        -- Slight vibration effect on circle (optional)
-        local offset = math.sin(percent * 0.5) * 2
-        glowCircle.Position = UDim2.new(0.5, -100 + offset, 0.5, -100 + offset)
-    end
-    
-    -- Loading complete - transition
-    transitionToMainMenu()
-end
-
--- ========== TRANSITION EFFECT ==========
-local function transitionToMainMenu()
-    -- Play transition sound
-    pcall(function() transitionSound:Play() end)
-    pcall(function() loadingSound:Stop() end)
-    
-    -- Create flash overlay
-    local flashOverlay = Instance.new("Frame")
-    flashOverlay.Size = UDim2.new(1, 0, 1, 0)
-    flashOverlay.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    flashOverlay.BackgroundTransparency = 1
-    flashOverlay.Parent = gui
-    
-    -- Flash animation
-    local flashTween = TweenService:Create(flashOverlay, TweenInfo.new(0.15, Enum.EasingStyle.Linear), {BackgroundTransparency = 0})
-    flashTween:Play()
-    
-    task.wait(0.15)
-    
-    -- Shrink loading frame
-    local shrinkTween = TweenService:Create(loadingFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
-    shrinkTween:Play()
-    
-    -- Show and expand main menu
-    mainMenuFrame.Visible = true
-    mainMenuFrame.Size = UDim2.new(0, 0, 0, 0)
-    
-    local expandTween = TweenService:Create(mainMenuFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 1, 0)})
-    expandTween:Play()
-    
-    task.wait(0.5)
-    flashOverlay:Destroy()
-    loadingFrame:Destroy()
-    
-    setupMainMenu()
-end
-
--- ========== MAIN MENU SETUP ==========
-local function setupMainMenu()
-    -- Menu title
-    local menuTitle = Instance.new("TextLabel")
-    menuTitle.Size = UDim2.new(0.6, 0, 0.12, 0)
-    menuTitle.Position = UDim2.new(0.2, 0, 0.1, 0)
-    menuTitle.BackgroundTransparency = 1
-    menuTitle.Text = "MAIN MENU"
-    menuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    menuTitle.TextScaled = true
-    menuTitle.Font = Enum.Font.GothamBold
-    menuTitle.TextStrokeTransparency = 0.3
-    menuTitle.TextStrokeColor3 = Color3.fromRGB(0, 200, 255)
-    menuTitle.Parent = mainMenuFrame
-    
-    -- Menu gradient
-    local menuGradient = Instance.new("UIGradient")
-    menuGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 10, 25)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(25, 10, 40)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 25))
-    })
-    menuGradient.Parent = mainMenuFrame
-    
-    -- Rotating gradient animation
-    task.spawn(function()
-        local rotation = 0
-        while mainMenuFrame and mainMenuFrame.Visible do
-            rotation = (rotation + 0.5) % 360
-            menuGradient.Rotation = rotation
-            task.wait(0.05)
-        end
-    end)
-    
-    -- Menu particles
-    local menuParticles = particleEmitter:Clone()
-    menuParticles.Rate = 30
-    menuParticles.Parent = mainMenuFrame
-    
-    -- Buttons
-    local buttons = {"PLAY", "SETTINGS", "CREDITS", "EXIT"}
-    local yPositions = {0.3, 0.45, 0.6, 0.75}
-    
-    for i, btnText in ipairs(buttons) do
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(0.3, 0, 0.08, 0)
-        button.Position = UDim2.new(0.35, 0, yPositions[i], 0)
-        button.Text = btnText
-        button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        button.TextScaled = true
-        button.Font = Enum.Font.GothamBold
-        button.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        button.BorderSizePixel = 0
-        button.Parent = mainMenuFrame
-        
-        -- Button hover effects
-        button.MouseEnter:Connect(function()
-            button.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-            button.TextColor3 = Color3.fromRGB(0, 200, 255)
-            pcall(function() clickSound:Play() end)
-        end)
-        
-        button.MouseLeave:Connect(function()
-            button.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-            button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        end)
-        
-        -- Button click handler
-        button.MouseButton1Click:Connect(function()
-            pcall(function() clickSound:Play() end)
-            
-            if btnText == "EXIT" then
-                pcall(function() game:Shutdown() end)
-            elseif btnText == "PLAY" then
-                menuTitle.Text = "Starting Game..."
-                task.wait(1)
-                -- Add your game start logic here
-                print("Game started!")
-            elseif btnText == "SETTINGS" then
-                print("Settings clicked")
-            elseif btnText == "CREDITS" then
-                print("Credits clicked")
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
             end
         end)
     end
-    
-    -- Version text
-    local versionText = Instance.new("TextLabel")
-    versionText.Size = UDim2.new(0.3, 0, 0.04, 0)
-    versionText.Position = UDim2.new(0.35, 0, 0.9, 0)
-    versionText.BackgroundTransparency = 1
-    versionText.Text = "v1.0.0"
-    versionText.TextColor3 = Color3.fromRGB(100, 100, 150)
-    versionText.TextScaled = true
-    versionText.Font = Enum.Font.Gotham
-    versionText.Parent = mainMenuFrame
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateDrag(input)
+    end
+end)
+
+-- ========== CLOSE FUNCTIONALITY ==========
+local function closeGUI()
+    local shrinkTween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0)
+    })
+    shrinkTween:Play()
+    shrinkTween:Completed:Connect(function()
+        mainFrame.Visible = false
+        mainFrame.Size = UDim2.new(0, 600, 0, 400)
+        mainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
+    end)
 end
 
--- ========== START THE GUI ==========
-print("Universal Loading GUI Started - Works on Delta and all executors!")
+closeButton.MouseButton1Click:Connect(closeGUI)
+closeButton.TouchTap:Connect(closeGUI)
+
+-- ========== MINIMIZE FUNCTION (Shrinks to title text) ==========
+local isMinimized = false
+
+local function toggleMinimize()
+    if isMinimized then
+        -- Expand back to full
+        local expandTween = TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 600, 0, 400)
+        })
+        expandTween:Play()
+        contentFrame.Visible = true
+        mainTitle.Text = "YAGAMI HUB"
+        isMinimized = false
+    else
+        -- Shrink to just title bar
+        local shrinkTween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 200, 0, 45)
+        })
+        shrinkTween:Play()
+        contentFrame.Visible = false
+        mainTitle.Text = "YAGAMI HUB"
+        isMinimized = true
+    end
+end
+
+minimizeButton.MouseButton1Click:Connect(toggleMinimize)
+minimizeButton.TouchTap:Connect(toggleMinimize)
+
+-- ========== LOADING SIMULATION ==========
+local function startLoading()
+    -- Animate loading frame pulse
+    local pulseTween = TweenService:Create(loadingFrame, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+        BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+    })
+    pulseTween:Play()
+    
+    -- Loading steps
+    local steps = {
+        {text = "Initializing Yagami Hub...", percent = 10},
+        {text = "Loading assets...", percent = 25},
+        {text = "Connecting...", percent = 40},
+        {text = "Setting up UI...", percent = 55},
+        {text = "Loading modules...", percent = 70},
+        {text = "Almost ready...", percent = 85},
+        {text = "Welcome to Yagami Hub!", percent = 100}
+    }
+    
+    local currentStep = 1
+    
+    for percent = 1, 100 do
+        task.wait(0.02) -- 2 seconds total
+        
+        progressFill.Size = UDim2.new(percent / 100, 0, 1, 0)
+        percentText.Text = percent .. "%"
+        
+        if currentStep <= #steps and percent >= steps[currentStep].percent then
+            subtitleText.Text = steps[currentStep].text
+            currentStep = currentStep + 1
+        end
+        
+        -- Color transition
+        local hue = 0.55 + (percent / 100) * 0.2
+        progressFill.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+    end
+    
+    -- Transition to main GUI
+    transitionToMain()
+end
+
+-- ========== TRANSITION EFFECT ==========
+local function transitionToMain()
+    -- Shrink loading frame
+    local shrinkTween = TweenService:Create(loadingFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0)
+    })
+    shrinkTween:Play()
+    
+    task.wait(0.3)
+    
+    loadingFrame.Visible = false
+    mainFrame.Visible = true
+    
+    -- Pop-in animation for main GUI
+    mainFrame.Size = UDim2.new(0, 0, 0, 0)
+    local expandTween = TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 600, 0, 400)
+    })
+    expandTween:Play()
+    
+    -- Particle burst effect
+    local burst = particleEmitter:Clone()
+    burst.Rate = 200
+    burst.Lifetime = NumberRange.new(0.5, 1)
+    burst.Parent = mainFrame
+    task.wait(0.5)
+    burst:Destroy()
+end
+
+-- ========== START ==========
+print("Yagami Hub Loaded - Supports Mobile & PC with Dragging!")
 startLoading()
