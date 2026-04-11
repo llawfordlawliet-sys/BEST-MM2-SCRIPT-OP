@@ -1,5 +1,6 @@
--- YAGAMI HUB - FINAL WORKING VERSION
+---- YAGAMI HUB - MURDER MYSTERY 2 EDITION
 -- Works on Delta, Synapse, Krnl, ScriptWare, Fluxus, Oxygen U
+-- Silent Aim works as Sheriff (auto-aims at Murderer)
 
 repeat task.wait() until game:IsLoaded()
 
@@ -8,6 +9,8 @@ local UserInput = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local VirtualUser = game:GetService("VirtualUser")
 
 -- Create GUI
 local screenGui = Instance.new("ScreenGui")
@@ -16,6 +19,209 @@ screenGui.Parent = plr:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
 
 local retroFont = Enum.Font.Gotham
+
+-- ============================================
+-- MM2 VARIABLES
+-- ============================================
+local currentRole = "Innocent" -- Will be updated
+local silentAimEnabled = false
+local autoCollectEnabled = false
+local currentTarget = nil
+local collectConnection = nil
+
+-- Function to get player's current role
+local function updateRole()
+    for _, v in pairs(plr.Character:GetChildren()) do
+        if v:IsA("Tool") then
+            if v.Name == "Gun" then
+                currentRole = "Sheriff"
+                return
+            elseif v.Name == "Knife" then
+                currentRole = "Murderer"
+                return
+            end
+        end
+    end
+    currentRole = "Innocent"
+end
+
+-- Get Murderer player (for Silent Aim)
+local function getMurderer()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= plr and player.Character and player.Character:FindFirstChild("Knife") then
+            return player
+        end
+    end
+    return nil
+end
+
+-- Get all coins on ground (for auto-collect)
+local function getCoins()
+    local coins = {}
+    for _, descendant in ipairs(Workspace:GetDescendants()) do
+        if descendant:IsA("BasePart") and descendant.Name == "Coin" and descendant.Parent and not descendant.Parent:IsA("Tool") then
+            table.insert(coins, descendant)
+        end
+    end
+    return coins
+end
+
+-- Walk to coin (no teleport/fly)
+local function walkToCoin(coin)
+    if not coin or not coin.Parent then return false end
+    
+    local character = plr.Character
+    if not character then return false end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not rootPart then return false end
+    
+    local originalSpeed = humanoid.WalkSpeed
+    humanoid.WalkSpeed = 25
+    
+    local targetPos = coin.Position
+    humanoid:MoveTo(targetPos)
+    
+    local timeout = 8
+    local startTime = tick()
+    
+    repeat
+        task.wait(0.1)
+        local dist = (targetPos - rootPart.Position).Magnitude
+        if dist <= 5 then
+            humanoid:MoveTo(rootPart.Position)
+            return true
+        end
+        humanoid:MoveTo(targetPos)
+    until not coin.Parent or (tick() - startTime) > timeout
+    
+    humanoid.WalkSpeed = originalSpeed
+    return false
+end
+
+-- ============================================
+-- SILENT AIM (WORKS FOR SHERIFF IN MM2)
+-- ============================================
+local function getClosestMurderer()
+    local murderer = getMurderer()
+    if not murderer or not murderer.Character then return nil end
+    
+    local character = plr.Character
+    if not character then return nil end
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return nil end
+    
+    local murdererRoot = murderer.Character:FindFirstChild("HumanoidRootPart")
+    if not murdererRoot then return nil end
+    
+    return {
+        player = murderer,
+        rootPart = murdererRoot,
+        distance = (murdererRoot.Position - rootPart.Position).Magnitude
+    }
+end
+
+-- Silent aim execution - aims gun at murderer
+local function updateSilentAim()
+    if not silentAimEnabled then return end
+    
+    -- Check if player is Sheriff (has gun)
+    local gun = plr.Character and plr.Character:FindFirstChild("Gun")
+    if not gun then return end
+    
+    local murdererData = getClosestMurderer()
+    if not murdererData then return end
+    
+    -- Get mouse and lock onto murderer
+    local mouse = plr:GetMouse()
+    local murdererHead = murdererData.player.Character:FindFirstChild("Head")
+    
+    if murdererHead then
+        -- Convert world position to screen position
+        local vector, onScreen = Workspace.CurrentCamera:WorldToScreenPoint(murdererHead.Position)
+        if onScreen then
+            -- Move mouse to murderer's head position (silent aim)
+            mousemoverel(vector.X - mouse.X, vector.Y - mouse.Y)
+            
+            -- Auto-shoot when aimed
+            if gun and gun:FindFirstChild("Fire") then
+                local args = {mouse.Hit}
+                gun.Fire:FireServer(unpack(args))
+            end
+        end
+    end
+end
+
+-- Connect silent aim to render step
+local silentAimConnection = nil
+local function startSilentAim()
+    if silentAimConnection then silentAimConnection:Disconnect() end
+    silentAimConnection = RunService.RenderStepped:Connect(updateSilentAim)
+end
+
+local function stopSilentAim()
+    if silentAimConnection then
+        silentAimConnection:Disconnect()
+        silentAimConnection = nil
+    end
+end
+
+-- ============================================
+-- AUTO COLLECT COINS
+-- ============================================
+local autoCollectConnection = nil
+local isCollecting = false
+
+local function startAutoCollect()
+    if autoCollectConnection then autoCollectConnection:Disconnect() end
+    
+    autoCollectConnection = RunService.Heartbeat:Connect(function()
+        if not autoCollectEnabled then return end
+        
+        local character = plr.Character
+        if not character then return end
+        
+        local humanoid = character:FindFirstChild("Humanoid")
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        if not humanoid or not rootPart then return end
+        
+        local coins = getCoins()
+        if #coins > 0 then
+            local closestCoin = nil
+            local closestDist = math.huge
+            
+            for _, coin in ipairs(coins) do
+                local dist = (coin.Position - rootPart.Position).Magnitude
+                if dist < closestDist then
+                    closestDist = dist
+                    closestCoin = coin
+                end
+            end
+            
+            if closestCoin then
+                walkToCoin(closestCoin)
+            end
+        end
+    end)
+end
+
+local function stopAutoCollect()
+    if autoCollectConnection then
+        autoCollectConnection:Disconnect()
+        autoCollectConnection = nil
+    end
+    
+    local character = plr.Character
+    if character then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 16
+        end
+    end
+end
 
 -- ============================================
 -- LOADING SCREEN
@@ -88,7 +294,6 @@ subText.TextSize = 14
 subText.Font = retroFont
 subText.Parent = loadingFrame
 
--- Access Granted Text (hidden initially)
 local accessText = Instance.new("TextLabel")
 accessText.Size = UDim2.new(0.6, 0, 0, 40)
 accessText.Position = UDim2.new(0.2, 0, 0.85, 0)
@@ -244,190 +449,7 @@ contentCorner.CornerRadius = UDim.new(0, 8)
 contentCorner.Parent = contentFrame
 
 -- ============================================
--- AUTO FARM COINS VARIABLES
--- ============================================
-local autoFarmEnabled = false
-local farmConnection = nil
-local currentTarget = nil
-local targetCooldown = false
-local COINS_WALKSPEED = 25
-
--- Function to get all coin parts in the underground area
-local function getUndergroundCoins()
-    local coins = {}
-    -- Look for coin parts with common names (customize based on your game)
-    local possibleCoinNames = {"Coin", "Money", "Gem", "Crystal", "Token", "Collectible"}
-    
-    for _, descendant in ipairs(Workspace:GetDescendants()) do
-        if descendant:IsA("BasePart") and descendant.Parent then
-            local nameLower = descendant.Name:lower()
-            local isValidCoin = false
-            
-            -- Check if it's a coin by name or tag
-            for _, coinName in ipairs(possibleCoinNames) do
-                if nameLower:find(coinName:lower()) then
-                    isValidCoin = true
-                    break
-                end
-            end
-            
-            -- Also check for a "Coin" tag or custom attribute
-            if not isValidCoin and descendant:IsA("BasePart") then
-                if descendant:GetAttribute("Coin") or descendant:GetAttribute("Collectible") then
-                    isValidCoin = true
-                end
-            end
-            
-            if isValidCoin and descendant ~= currentTarget then
-                -- Check if coin is underground (Y position less than a threshold, adjust as needed)
-                -- For underground, check if Y is low or if it's in a cave zone
-                local isUnderground = descendant.Position.Y < 50 -- Adjust this threshold based on your game
-                
-                if isUnderground and descendant:FindFirstChild("TouchInterest") then
-                    table.insert(coins, descendant)
-                end
-            end
-        end
-    end
-    
-    return coins
-end
-
--- Function to walk to a target without teleporting or flying
-local function walkToTarget(target)
-    if not target or not target.Parent then return false end
-    
-    local character = plr.Character
-    if not character then return false end
-    
-    local humanoid = character:FindFirstChild("Humanoid")
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    
-    if not humanoid or not rootPart then return false end
-    
-    -- Store original walkspeed
-    local originalWalkSpeed = humanoid.WalkSpeed
-    
-    -- Set to desired walkspeed
-    humanoid.WalkSpeed = COINS_WALKSPEED
-    
-    -- Calculate direction to target
-    local targetPos = target.Position
-    local direction = (targetPos - rootPart.Position).Unit
-    local distance = (targetPos - rootPart.Position).Magnitude
-    
-    -- Move towards target
-    humanoid:MoveTo(targetPos)
-    
-    -- Wait until we get close or timeout
-    local timeout = 10 -- seconds
-    local startTime = tick()
-    
-    repeat
-        task.wait(0.1)
-        local currentDist = (targetPos - rootPart.Position).Magnitude
-        
-        -- If we're close enough, collect the coin
-        if currentDist <= 5 then
-            humanoid:MoveTo(rootPart.Position) -- Stop moving
-            return true
-        end
-        
-        -- Re-update move direction
-        if currentDist > 5 then
-            humanoid:MoveTo(targetPos)
-        end
-        
-    until not target.Parent or not autoFarmEnabled or (tick() - startTime) > timeout
-    
-    -- Reset walkspeed
-    humanoid.WalkSpeed = originalWalkSpeed
-    return false
-end
-
--- Main auto-farm loop
-local function startAutoFarm()
-    if farmConnection then farmConnection:Disconnect() end
-    
-    farmConnection = RunService.Heartbeat:Connect(function()
-        if not autoFarmEnabled then return end
-        
-        local character = plr.Character
-        if not character then return end
-        
-        local humanoid = character:FindFirstChild("Humanoid")
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        if not humanoid or not rootPart then return end
-        
-        -- Don't get new target if on cooldown or currently moving to a target
-        if targetCooldown or currentTarget then return end
-        
-        -- Find all underground coins
-        local coins = getUndergroundCoins()
-        
-        if #coins > 0 then
-            -- Find closest coin
-            local closestCoin = nil
-            local closestDist = math.huge
-            
-            for _, coin in ipairs(coins) do
-                local dist = (coin.Position - rootPart.Position).Magnitude
-                if dist < closestDist then
-                    closestDist = dist
-                    closestCoin = coin
-                end
-            end
-            
-            if closestCoin then
-                currentTarget = closestCoin
-                
-                -- Walk to the coin
-                local success = walkToTarget(currentTarget)
-                
-                if success and currentTarget and currentTarget.Parent then
-                    -- Simulate touching the coin (if touch isn't automatic)
-                    local touchInterest = currentTarget:FindFirstChild("TouchInterest")
-                    if touchInterest then
-                        -- Fire touch event
-                        local args = {character:FindFirstChild("HumanoidRootPart")}
-                        touchInterest:FireServer(unpack(args))
-                    end
-                    
-                    -- Destroy or remove the coin (depends on game)
-                    -- currentTarget:Destroy() -- Uncomment if coins need to be destroyed
-                end
-                
-                -- Cooldown before next target
-                targetCooldown = true
-                task.wait(0.5)
-                targetCooldown = false
-                currentTarget = nil
-            end
-        end
-    end)
-end
-
-local function stopAutoFarm()
-    if farmConnection then
-        farmConnection:Disconnect()
-        farmConnection = nil
-    end
-    
-    -- Reset walkspeed to default
-    local character = plr.Character
-    if character then
-        local humanoid = character:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid.WalkSpeed = 16 -- Default walkspeed
-        end
-    end
-    
-    currentTarget = nil
-    targetCooldown = false
-end
-
--- ============================================
--- SECTION CONTENT CREATION
+-- SECTION CONTENT CREATION (MM2 VERSION)
 -- ============================================
 local sections = {"Main", "Combat", "Auto-farm", "Visuals", "Settings"}
 local sectionButtons = {}
@@ -440,7 +462,6 @@ local function createSectionContent(sectionName)
         end
     end
     
-    -- Create a scrolling frame for content
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Size = UDim2.new(1, 0, 1, -50)
     scrollFrame.Position = UDim2.new(0, 0, 0, 50)
@@ -466,106 +487,165 @@ local function createSectionContent(sectionName)
     sectionTitle.Parent = scrollFrame
     
     if sectionName == "Main" then
-        local infoText = Instance.new("TextLabel")
-        infoText.Size = UDim2.new(1, 0, 0, 120)
-        infoText.BackgroundTransparency = 1
-        infoText.TextColor3 = Color3.fromRGB(200, 200, 200)
-        infoText.TextSize = 16
-        infoText.Font = retroFont
-        infoText.TextWrapped = true
-        infoText.Text = "Main Hub Functions\n\n- Player Info: " .. plr.Name .. "\n- Server Time: " .. os.date("%H:%M:%S") .. "\n- Rejoin: Press R to reopen GUI"
-        infoText.Parent = scrollFrame
+        local roleFrame = Instance.new("Frame")
+        roleFrame.Size = UDim2.new(1, -20, 0, 80)
+        roleFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+        roleFrame.BackgroundTransparency = 0.3
+        roleFrame.BorderSizePixel = 0
+        roleFrame.Parent = scrollFrame
+        
+        local roleCorner = Instance.new("UICorner")
+        roleCorner.CornerRadius = UDim.new(0, 8)
+        roleCorner.Parent = roleFrame
+        
+        local roleText = Instance.new("TextLabel")
+        roleText.Size = UDim2.new(1, 0, 1, 0)
+        roleText.BackgroundTransparency = 1
+        roleText.Text = "Current Role: " .. currentRole .. "\nPress R to toggle GUI"
+        roleText.TextColor3 = Color3.fromRGB(200, 200, 200)
+        roleText.TextSize = 16
+        roleText.Font = retroFont
+        roleText.TextWrapped = true
+        roleText.Parent = roleFrame
+        
+        -- Update role text every second
+        task.spawn(function()
+            while scrollFrame and scrollFrame.Parent do
+                updateRole()
+                roleText.Text = "Current Role: " .. currentRole .. "\nPress R to toggle GUI\n\nSilent Aim Status: " .. (silentAimEnabled and "ENABLED" or "DISABLED")
+                task.wait(1)
+            end
+        end)
         
     elseif sectionName == "Combat" then
-        local combatText = Instance.new("TextLabel")
-        combatText.Size = UDim2.new(1, 0, 0, 150)
-        combatText.BackgroundTransparency = 1
-        combatText.TextColor3 = Color3.fromRGB(200, 200, 200)
-        combatText.TextSize = 16
-        combatText.Font = retroFont
-        combatText.TextWrapped = true
-        combatText.Text = "Combat Features\n\n- Aim Assist: COMING SOON\n- Trigger Bot: COMING SOON\n- Silent Aim: COMING SOON\n- Anti-Aim: COMING SOON"
-        combatText.Parent = scrollFrame
+        -- Silent Aim Toggle
+        local silentFrame = Instance.new("Frame")
+        silentFrame.Size = UDim2.new(1, -20, 0, 50)
+        silentFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+        silentFrame.BackgroundTransparency = 0.3
+        silentFrame.BorderSizePixel = 0
+        silentFrame.Parent = scrollFrame
         
-    elseif sectionName == "Auto-farm" then
-        -- Auto-farm toggle button
-        local toggleFrame = Instance.new("Frame")
-        toggleFrame.Size = UDim2.new(1, -20, 0, 50)
-        toggleFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        toggleFrame.BackgroundTransparency = 0.3
-        toggleFrame.BorderSizePixel = 0
-        toggleFrame.Parent = scrollFrame
+        local silentCorner = Instance.new("UICorner")
+        silentCorner.CornerRadius = UDim.new(0, 8)
+        silentCorner.Parent = silentFrame
         
-        local toggleCorner = Instance.new("UICorner")
-        toggleCorner.CornerRadius = UDim.new(0, 8)
-        toggleCorner.Parent = toggleFrame
+        local silentLabel = Instance.new("TextLabel")
+        silentLabel.Size = UDim2.new(0.6, 0, 1, 0)
+        silentLabel.Position = UDim2.new(0.05, 0, 0, 0)
+        silentLabel.BackgroundTransparency = 1
+        silentLabel.Text = "Silent Aim (Sheriff Only)"
+        silentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        silentLabel.TextSize = 16
+        silentLabel.TextXAlignment = Enum.TextXAlignment.Left
+        silentLabel.Font = retroFont
+        silentLabel.Parent = silentFrame
         
-        local toggleLabel = Instance.new("TextLabel")
-        toggleLabel.Size = UDim2.new(0.6, 0, 1, 0)
-        toggleLabel.Position = UDim2.new(0.05, 0, 0, 0)
-        toggleLabel.BackgroundTransparency = 1
-        toggleLabel.Text = "Auto Farm Underground Coins"
-        toggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        toggleLabel.TextSize = 16
-        toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-        toggleLabel.Font = retroFont
-        toggleLabel.Parent = toggleFrame
-        
-        local toggleButton = Instance.new("TextButton")
-        toggleButton.Size = UDim2.new(0, 80, 0, 35)
-        toggleButton.Position = UDim2.new(0.8, 0, 0.5, -17.5)
-        toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-        toggleButton.BorderSizePixel = 0
-        toggleButton.Text = "OFF"
-        toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        toggleButton.TextSize = 16
-        toggleButton.Font = retroFont
-        toggleButton.Parent = toggleFrame
+        local silentButton = Instance.new("TextButton")
+        silentButton.Size = UDim2.new(0, 80, 0, 35)
+        silentButton.Position = UDim2.new(0.8, 0, 0.5, -17.5)
+        silentButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+        silentButton.BorderSizePixel = 0
+        silentButton.Text = "OFF"
+        silentButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        silentButton.TextSize = 16
+        silentButton.Font = retroFont
+        silentButton.Parent = silentFrame
         
         local btnCorner = Instance.new("UICorner")
         btnCorner.CornerRadius = UDim.new(0, 6)
-        btnCorner.Parent = toggleButton
+        btnCorner.Parent = silentButton
         
-        local statusLabel = Instance.new("TextLabel")
-        statusLabel.Size = UDim2.new(1, 0, 0, 30)
-        statusLabel.Position = UDim2.new(0, 0, 0, 60)
-        statusLabel.BackgroundTransparency = 1
-        statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-        statusLabel.TextSize = 14
-        statusLabel.Font = retroFont
-        statusLabel.Text = "Status: Idle"
-        statusLabel.Parent = scrollFrame
+        local silentInfo = Instance.new("TextLabel")
+        silentInfo.Size = UDim2.new(1, -20, 0, 60)
+        silentInfo.Position = UDim2.new(0, 10, 0, 70)
+        silentInfo.BackgroundTransparency = 1
+        silentInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
+        silentInfo.TextSize = 14
+        silentInfo.Font = retroFont
+        silentInfo.TextWrapped = true
+        silentInfo.Text = "When enabled as Sheriff, your aim will automatically lock onto the Murderer. Works best with gun."
+        silentInfo.Parent = scrollFrame
         
-        local infoLabel = Instance.new("TextLabel")
-        infoLabel.Size = UDim2.new(1, 0, 0, 80)
-        infoLabel.Position = UDim2.new(0, 0, 0, 100)
-        infoLabel.BackgroundTransparency = 1
-        infoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-        infoLabel.TextSize = 14
-        infoLabel.Font = retroFont
-        infoLabel.TextWrapped = true
-        infoLabel.Text = "Info: Will walk to underground coins at speed " .. COINS_WALKSPEED .. ". Does NOT teleport or fly."
-        infoLabel.Parent = scrollFrame
-        
-        -- Toggle button logic
-        local isFarming = false
-        toggleButton.MouseButton1Click:Connect(function()
-            if isFarming then
-                autoFarmEnabled = false
-                stopAutoFarm()
-                toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-                toggleButton.Text = "OFF"
-                statusLabel.Text = "Status: Idle"
-                statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-                isFarming = false
+        silentButton.MouseButton1Click:Connect(function()
+            if silentAimEnabled then
+                silentAimEnabled = false
+                stopSilentAim()
+                silentButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+                silentButton.Text = "OFF"
+                silentInfo.Text = "Silent Aim DISABLED. When enabled as Sheriff, aim locks onto Murderer."
             else
-                autoFarmEnabled = true
-                startAutoFarm()
-                toggleButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-                toggleButton.Text = "ON"
-                statusLabel.Text = "Status: Farming underground coins..."
-                statusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-                isFarming = true
+                silentAimEnabled = true
+                startSilentAim()
+                silentButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+                silentButton.Text = "ON"
+                silentInfo.Text = "Silent Aim ENABLED! When Sheriff, aim will lock onto Murderer. Works best with gun."
+            end
+        end)
+        
+    elseif sectionName == "Auto-farm" then
+        -- Auto Collect Coins
+        local autoFrame = Instance.new("Frame")
+        autoFrame.Size = UDim2.new(1, -20, 0, 50)
+        autoFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+        autoFrame.BackgroundTransparency = 0.3
+        autoFrame.BorderSizePixel = 0
+        autoFrame.Parent = scrollFrame
+        
+        local autoCorner = Instance.new("UICorner")
+        autoCorner.CornerRadius = UDim.new(0, 8)
+        autoCorner.Parent = autoFrame
+        
+        local autoLabel = Instance.new("TextLabel")
+        autoLabel.Size = UDim2.new(0.6, 0, 1, 0)
+        autoLabel.Position = UDim2.new(0.05, 0, 0, 0)
+        autoLabel.BackgroundTransparency = 1
+        autoLabel.Text = "Auto Collect Coins"
+        autoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        autoLabel.TextSize = 16
+        autoLabel.TextXAlignment = Enum.TextXAlignment.Left
+        autoLabel.Font = retroFont
+        autoLabel.Parent = autoFrame
+        
+        local autoButton = Instance.new("TextButton")
+        autoButton.Size = UDim2.new(0, 80, 0, 35)
+        autoButton.Position = UDim2.new(0.8, 0, 0.5, -17.5)
+        autoButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+        autoButton.BorderSizePixel = 0
+        autoButton.Text = "OFF"
+        autoButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        autoButton.TextSize = 16
+        autoButton.Font = retroFont
+        autoButton.Parent = autoFrame
+        
+        local btnCorner2 = Instance.new("UICorner")
+        btnCorner2.CornerRadius = UDim.new(0, 6)
+        btnCorner2.Parent = autoButton
+        
+        local autoInfo = Instance.new("TextLabel")
+        autoInfo.Size = UDim2.new(1, -20, 0, 80)
+        autoInfo.Position = UDim2.new(0, 10, 0, 70)
+        autoInfo.BackgroundTransparency = 1
+        autoInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
+        autoInfo.TextSize = 14
+        autoInfo.Font = retroFont
+        autoInfo.TextWrapped = true
+        autoInfo.Text = "Auto collects coins that spawn on the ground. Walks to coins at speed 25 (no teleport/fly)."
+        autoInfo.Parent = scrollFrame
+        
+        autoButton.MouseButton1Click:Connect(function()
+            if autoCollectEnabled then
+                autoCollectEnabled = false
+                stopAutoCollect()
+                autoButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+                autoButton.Text = "OFF"
+                autoInfo.Text = "Auto Collect DISABLED. When ON, walks to coins at speed 25."
+            else
+                autoCollectEnabled = true
+                startAutoCollect()
+                autoButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+                autoButton.Text = "ON"
+                autoInfo.Text = "Auto Collect ENABLED! Walking to nearby coins at speed 25."
             end
         end)
         
@@ -592,7 +672,6 @@ local function createSectionContent(sectionName)
         settingsText.Parent = scrollFrame
     end
     
-    -- Update canvas size
     local function updateCanvas()
         local totalHeight = 0
         for _, child in pairs(scrollFrame:GetChildren()) do
@@ -724,7 +803,7 @@ toggleBtn.TouchTap:Connect(toggleGUI)
 
 local loadingMessages = {
     "Initializing Yagami Hub...",
-    "Loading assets...",
+    "Loading MM2 assets...",
     "Connecting to server...",
     "Setting up UI...",
     "Loading modules...",
@@ -792,7 +871,7 @@ function transitionToMain()
         sectionButtons["Main"].MouseButton1Click:Fire()
     end
     
-    print("YAGAMI HUB - Access Granted!")
+    print("YAGAMI HUB - MM2 Edition Loaded!")
 end
 
 updateLoading()
@@ -821,10 +900,20 @@ UserInput.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Cleanup on player leave
+-- Update role when character changes
 plr.CharacterAdded:Connect(function()
-    if autoFarmEnabled then
-        task.wait(1)
-        startAutoFarm()
+    task.wait(1)
+    updateRole()
+    if autoCollectEnabled then
+        startAutoCollect()
+    end
+    if silentAimEnabled then
+        startSilentAim()
     end
 end)
+
+-- Initial role update
+task.wait(2)
+updateRole()
+
+print("YAGAMI HUB - MM2 Ready! Silent Aim works as Sheriff!")
