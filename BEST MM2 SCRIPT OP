@@ -1,6 +1,6 @@
---- YAGAMI HUB - MURDER MYSTERY 2 EDITION
+-- YAGAMI HUB - MURDER MYSTERY 2 EDITION
 -- Works on Delta, Synapse, Krnl, ScriptWare, Fluxus, Oxygen U
--- Silent Aim Universal | Underground Flying Coin Farm | Animated FOV Circle | Role-Based ESP
+-- Silent Aim Universal | Underground Flying Coin Farm | Animated FOV Circle | Role-Based ESP | Aimlock (Murderer Only)
 
 repeat task.wait() until game:IsLoaded()
 
@@ -27,8 +27,8 @@ local currentRole = "Innocent"
 local silentAimEnabled = false
 local showFOVCircle = false
 local autoCollectEnabled = false
-local currentTarget = nil
-local collectConnection = nil
+local aimlockEnabled = false
+local currentAimlockTarget = nil
 local noclipEnabled = false
 local espEnabled = false
 local espConnections = {}
@@ -47,7 +47,7 @@ local ROLE_COLORS = {
 }
 
 -- ============================================
--- NOCLIP / FLY FUNCTIONALITY
+-- NOCLIP / FLY FUNCTIONALITY (REWRITTEN)
 -- ============================================
 local function setNoclip(state)
     noclipEnabled = state
@@ -61,7 +61,7 @@ local function setNoclip(state)
     end
 end
 
--- Fly to position (underground flying)
+-- FLY TO POSITION - REWRITTEN FOR RELIABILITY
 local function flyToPosition(targetPos)
     local character = plr.Character
     if not character then return false end
@@ -71,23 +71,30 @@ local function flyToPosition(targetPos)
     
     if not humanoid or not rootPart then return false end
     
+    -- Enable noclip for flying through floors
     setNoclip(true)
     
+    -- Store original properties
     local originalSpeed = humanoid.WalkSpeed
+    local originalPlatform = humanoid.PlatformStand
+    
+    -- Setup for flying
     humanoid.WalkSpeed = 25
     humanoid.PlatformStand = true
     
+    -- Calculate and execute movement
     local distance = (targetPos - rootPart.Position).Magnitude
-    local duration = distance / 25
+    local duration = math.max(0.1, distance / 25)
     
+    -- Create and play tween
     local flyTween = TweenService:Create(rootPart, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
         Position = targetPos
     })
     flyTween:Play()
-    
     flyTween.Completed:Wait()
     
-    humanoid.PlatformStand = false
+    -- Restore original properties
+    humanoid.PlatformStand = originalPlatform
     humanoid.WalkSpeed = originalSpeed
     setNoclip(false)
     
@@ -132,6 +139,16 @@ local function getPlayerRole(player)
     return "Innocent"
 end
 
+-- Get Murderer player (for aimlock)
+local function getMurderer()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= plr and player.Character and getPlayerRole(player) == "Murderer" then
+            return player
+        end
+    end
+    return nil
+end
+
 -- Get closest player (for universal silent aim)
 local function getClosestPlayer()
     local character = plr.Character
@@ -159,34 +176,100 @@ local function getClosestPlayer()
     return closest
 end
 
--- Get all coins on ground (including underground)
+-- Get all coins on ground (REWRITTEN for reliability)
 local function getCoins()
     local coins = {}
+    -- Look for coin parts with various possible names
+    local possibleCoinNames = {"Coin", "Money", "coin", "money", "Gem", "gem", "Token", "token"}
+    
     for _, descendant in ipairs(Workspace:GetDescendants()) do
-        if descendant:IsA("BasePart") and descendant.Name == "Coin" and descendant.Parent and not descendant.Parent:IsA("Tool") then
-            table.insert(coins, descendant)
+        if descendant:IsA("BasePart") and descendant.Parent then
+            local nameLower = descendant.Name:lower()
+            local isValidCoin = false
+            
+            -- Check by name
+            for _, coinName in ipairs(possibleCoinNames) do
+                if nameLower:find(coinName:lower()) then
+                    isValidCoin = true
+                    break
+                end
+            end
+            
+            -- Check by tag
+            if not isValidCoin and descendant:GetAttribute("Coin") then
+                isValidCoin = true
+            end
+            
+            -- Check if it's a collectible and not held by a player
+            if isValidCoin and descendant.Parent and not descendant.Parent:IsA("Tool") and not descendant.Parent:IsA("Player") then
+                table.insert(coins, descendant)
+            end
         end
     end
     return coins
 end
 
--- Fly to coin (underground flying)
-local function flyToCoin(coin)
-    if not coin or not coin.Parent then return false end
+-- ============================================
+-- AIMLOCK (MURDERER ONLY - TORSO)
+-- ============================================
+local aimlockConnection = nil
+
+local function updateAimlock()
+    if not aimlockEnabled then return end
     
-    local character = plr.Character
-    if not character then return false end
+    -- Check if player has a gun (Sheriff) - aimlock works best with gun
+    local hasGun = plr.Character and plr.Character:FindFirstChild("Gun")
+    if not hasGun then return end
     
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return false end
+    -- Get murderer player
+    local murderer = getMurderer()
+    if not murderer or not murderer.Character then
+        currentAimlockTarget = nil
+        return
+    end
     
-    local targetPos = coin.Position
-    return flyToPosition(targetPos)
+    -- Get murderer's torso/humanoidrootpart
+    local targetPart = murderer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetPart then
+        targetPart = murderer.Character:FindFirstChild("UpperTorso")
+    end
+    if not targetPart then return end
+    
+    currentAimlockTarget = murderer
+    
+    -- Get mouse and lock onto murderer's torso
+    local mouse = plr:GetMouse()
+    local vector, onScreen = Workspace.CurrentCamera:WorldToScreenPoint(targetPart.Position)
+    
+    if onScreen then
+        -- Smoothly move mouse to target (aimlock)
+        local deltaX = vector.X - mouse.X
+        local deltaY = vector.Y - mouse.Y
+        
+        -- Apply aimlock with smoothing
+        local smoothFactor = 0.3
+        mousemoverel(deltaX * smoothFactor, deltaY * smoothFactor)
+    end
+end
+
+local function startAimlock()
+    if aimlockConnection then aimlockConnection:Disconnect() end
+    aimlockConnection = RunService.RenderStepped:Connect(updateAimlock)
+end
+
+local function stopAimlock()
+    if aimlockConnection then
+        aimlockConnection:Disconnect()
+        aimlockConnection = nil
+    end
+    currentAimlockTarget = nil
 end
 
 -- ============================================
 -- UNIVERSAL SILENT AIM
 -- ============================================
+local silentAimConnection = nil
+
 local function updateSilentAim()
     if not silentAimEnabled then return end
     
@@ -249,6 +332,7 @@ local function createFOVCircle()
         Position = UDim2.new(0.5, -fovRadius, 0.5, -fovRadius)
     })
     
+    if circleAnimation then circleAnimation:Disconnect() end
     circleAnimation = RunService.RenderStepped:Connect(function()
         if showFOVCircle and fovCircle and fovCircle.Visible then
             pulseUp:Play()
@@ -272,11 +356,9 @@ end
 -- ROLE-BASED ESP (UPDATES EVERY SECOND)
 -- ============================================
 
--- Create ESP highlight for a player
 local function createESPForPlayer(player)
     if not player or player == plr then return end
     
-    -- Destroy existing ESP for this player
     if espObjects[player] then
         local oldHighlight = espObjects[player]
         if oldHighlight and oldHighlight.Parent then
@@ -288,7 +370,6 @@ local function createESPForPlayer(player)
     local character = player.Character
     if not character then return end
     
-    -- Create Highlight instance
     local highlight = Instance.new("Highlight")
     highlight.Name = "YagamiESP"
     highlight.Parent = character
@@ -296,7 +377,6 @@ local function createESPForPlayer(player)
     highlight.OutlineTransparency = 0.2
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     
-    -- Set color based on role
     local role = getPlayerRole(player)
     highlight.FillColor = ROLE_COLORS[role] or ROLE_COLORS.Innocent
     highlight.OutlineColor = highlight.FillColor
@@ -304,7 +384,6 @@ local function createESPForPlayer(player)
     espObjects[player] = highlight
 end
 
--- Remove ESP for a player
 local function removeESPForPlayer(player)
     if espObjects[player] then
         local highlight = espObjects[player]
@@ -315,11 +394,9 @@ local function removeESPForPlayer(player)
     end
 end
 
--- Update ESP for all players (called every second)
 local function updateAllESP()
     if not espEnabled then return end
     
-    -- Get all current players
     local currentPlayers = {}
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= plr then
@@ -327,29 +404,24 @@ local function updateAllESP()
         end
     end
     
-    -- Remove ESP for players that no longer exist
     for player, _ in pairs(espObjects) do
         if not currentPlayers[player] or not player.Character then
             removeESPForPlayer(player)
         end
     end
     
-    -- Create/Update ESP for current players
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= plr then
-            -- Check if player's role changed
             if espObjects[player] then
                 local highlight = espObjects[player]
                 local currentRole = getPlayerRole(player)
                 local expectedColor = ROLE_COLORS[currentRole] or ROLE_COLORS.Innocent
                 
-                -- Update color if role changed
                 if highlight.FillColor ~= expectedColor then
                     highlight.FillColor = expectedColor
                     highlight.OutlineColor = expectedColor
                 end
             else
-                -- Create new ESP if needed
                 if player.Character then
                     createESPForPlayer(player)
                 end
@@ -358,19 +430,15 @@ local function updateAllESP()
     end
 end
 
--- Start ESP system (updates every second)
 local espUpdateConnection = nil
 
 local function startESP()
     if espUpdateConnection then espUpdateConnection:Disconnect() end
     
-    -- Initial ESP creation
     updateAllESP()
     
-    -- Update every second for accuracy
     espUpdateConnection = RunService.Heartbeat:Connect(function()
         if espEnabled then
-            -- Update every 1 second (check using tick)
             if not espEnabled.lastUpdate or tick() - espEnabled.lastUpdate >= 1 then
                 espEnabled.lastUpdate = tick()
                 updateAllESP()
@@ -378,17 +446,15 @@ local function startESP()
         end
     end)
     
-    -- Also listen for character additions
     local function onCharacterAdded(player)
         if espEnabled and player ~= plr then
-            task.wait(0.5) -- Wait for character to fully load
+            task.wait(0.5)
             if player.Character then
                 createESPForPlayer(player)
             end
         end
     end
     
-    -- Connect to player added event
     espEnabled.playerAddedConnection = Players.PlayerAdded:Connect(onCharacterAdded)
 end
 
@@ -402,7 +468,6 @@ local function stopESP()
         espEnabled.playerAddedConnection:Disconnect()
     end
     
-    -- Remove all ESP objects
     for player, highlight in pairs(espObjects) do
         if highlight and highlight.Parent then
             highlight:Destroy()
@@ -412,38 +477,66 @@ local function stopESP()
 end
 
 -- ============================================
--- AUTO COLLECT COINS (UNDERGROUND FLYING)
+-- AUTO COLLECT COINS (REWRITTEN - WORKS RELIABLY)
 -- ============================================
 local autoCollectConnection = nil
+local isCollectingCoin = false
+
+local function collectClosestCoin()
+    if isCollectingCoin then return end
+    if not autoCollectEnabled then return end
+    
+    local character = plr.Character
+    if not character then return end
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    local coins = getCoins()
+    if #coins == 0 then return end
+    
+    -- Find closest coin
+    local closestCoin = nil
+    local closestDist = math.huge
+    
+    for _, coin in ipairs(coins) do
+        if coin and coin.Parent then
+            local dist = (coin.Position - rootPart.Position).Magnitude
+            if dist < closestDist then
+                closestDist = dist
+                closestCoin = coin
+            end
+        end
+    end
+    
+    if closestCoin and closestCoin.Parent then
+        isCollectingCoin = true
+        
+        -- Fly to the coin
+        local success = flyToPosition(closestCoin.Position)
+        
+        -- If we reached the coin, trigger collection
+        if success and closestCoin.Parent then
+            -- Simulate touching the coin
+            local touchInterest = closestCoin:FindFirstChild("TouchInterest")
+            if touchInterest then
+                local args = {character:FindFirstChild("HumanoidRootPart")}
+                pcall(function()
+                    touchInterest:FireServer(unpack(args))
+                end)
+            end
+        end
+        
+        isCollectingCoin = false
+    end
+end
 
 local function startAutoCollect()
     if autoCollectConnection then autoCollectConnection:Disconnect() end
     
     autoCollectConnection = RunService.Heartbeat:Connect(function()
-        if not autoCollectEnabled then return end
-        
-        local character = plr.Character
-        if not character then return end
-        
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        if not rootPart then return end
-        
-        local coins = getCoins()
-        if #coins > 0 then
-            local closestCoin = nil
-            local closestDist = math.huge
-            
-            for _, coin in ipairs(coins) do
-                local dist = (coin.Position - rootPart.Position).Magnitude
-                if dist < closestDist then
-                    closestDist = dist
-                    closestCoin = coin
-                end
-            end
-            
-            if closestCoin then
-                flyToCoin(closestCoin)
-            end
+        if autoCollectEnabled and not isCollectingCoin then
+            collectClosestCoin()
         end
     end)
 end
@@ -453,6 +546,7 @@ local function stopAutoCollect()
         autoCollectConnection:Disconnect()
         autoCollectConnection = nil
     end
+    isCollectingCoin = false
     setNoclip(false)
 end
 
@@ -721,7 +815,7 @@ local function createSectionContent(sectionName)
     
     if sectionName == "Main" then
         local roleFrame = Instance.new("Frame")
-        roleFrame.Size = UDim2.new(1, -20, 0, 80)
+        roleFrame.Size = UDim2.new(1, -20, 0, 100)
         roleFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
         roleFrame.BackgroundTransparency = 0.3
         roleFrame.BorderSizePixel = 0
@@ -744,13 +838,13 @@ local function createSectionContent(sectionName)
         task.spawn(function()
             while scrollFrame and scrollFrame.Parent do
                 updateRole()
-                roleText.Text = "Current Role: " .. currentRole .. "\nPress R to toggle GUI\n\nSilent Aim: " .. (silentAimEnabled and "ON" or "OFF") .. " | ESP: " .. (espEnabled and "ON" or "OFF")
+                roleText.Text = "Current Role: " .. currentRole .. "\nPress R to toggle GUI\n\nSilent Aim: " .. (silentAimEnabled and "ON" or "OFF") .. " | Aimlock: " .. (aimlockEnabled and "ON" or "OFF") .. " | ESP: " .. (espEnabled and "ON" or "OFF")
                 task.wait(1)
             end
         end)
         
     elseif sectionName == "Combat" then
-        -- Silent Aim Toggle (Main)
+        -- Silent Aim Toggle
         local silentFrame = Instance.new("Frame")
         silentFrame.Size = UDim2.new(1, -20, 0, 50)
         silentFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
@@ -788,10 +882,49 @@ local function createSectionContent(sectionName)
         btnCorner.CornerRadius = UDim.new(0, 6)
         btnCorner.Parent = silentButton
         
+        -- AIMLOCK Toggle (New)
+        local aimlockFrame = Instance.new("Frame")
+        aimlockFrame.Size = UDim2.new(1, -20, 0, 50)
+        aimlockFrame.Position = UDim2.new(0, 0, 0, 60)
+        aimlockFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+        aimlockFrame.BackgroundTransparency = 0.3
+        aimlockFrame.BorderSizePixel = 0
+        aimlockFrame.Parent = scrollFrame
+        
+        local aimlockCorner = Instance.new("UICorner")
+        aimlockCorner.CornerRadius = UDim.new(0, 8)
+        aimlockCorner.Parent = aimlockFrame
+        
+        local aimlockLabel = Instance.new("TextLabel")
+        aimlockLabel.Size = UDim2.new(0.6, 0, 1, 0)
+        aimlockLabel.Position = UDim2.new(0.05, 0, 0, 0)
+        aimlockLabel.BackgroundTransparency = 1
+        aimlockLabel.Text = "AIMLOCK (MURDERER ONLY)"
+        aimlockLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        aimlockLabel.TextSize = 16
+        aimlockLabel.TextXAlignment = Enum.TextXAlignment.Left
+        aimlockLabel.Font = retroFont
+        aimlockLabel.Parent = aimlockFrame
+        
+        local aimlockButton = Instance.new("TextButton")
+        aimlockButton.Size = UDim2.new(0, 80, 0, 35)
+        aimlockButton.Position = UDim2.new(0.8, 0, 0.5, -17.5)
+        aimlockButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+        aimlockButton.BorderSizePixel = 0
+        aimlockButton.Text = "OFF"
+        aimlockButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        aimlockButton.TextSize = 16
+        aimlockButton.Font = retroFont
+        aimlockButton.Parent = aimlockFrame
+        
+        local aimlockBtnCorner = Instance.new("UICorner")
+        aimlockBtnCorner.CornerRadius = UDim.new(0, 6)
+        aimlockBtnCorner.Parent = aimlockButton
+        
         -- Animated expand/collapse for FOV option
         local fovOptionFrame = Instance.new("Frame")
         fovOptionFrame.Size = UDim2.new(1, -40, 0, 0)
-        fovOptionFrame.Position = UDim2.new(0, 20, 0, 60)
+        fovOptionFrame.Position = UDim2.new(0, 20, 0, 120)
         fovOptionFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
         fovOptionFrame.BackgroundTransparency = 0.5
         fovOptionFrame.BorderSizePixel = 0
@@ -829,16 +962,16 @@ local function createSectionContent(sectionName)
         fovBtnCorner.CornerRadius = UDim.new(0, 6)
         fovBtnCorner.Parent = fovButton
         
-        local silentInfo = Instance.new("TextLabel")
-        silentInfo.Size = UDim2.new(1, -20, 0, 60)
-        silentInfo.Position = UDim2.new(0, 10, 0, 120)
-        silentInfo.BackgroundTransparency = 1
-        silentInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
-        silentInfo.TextSize = 14
-        silentInfo.Font = retroFont
-        silentInfo.TextWrapped = true
-        silentInfo.Text = "Universal Silent Aim works with ANY weapon. Automatically locks onto the closest player."
-        silentInfo.Parent = scrollFrame
+        local combatInfo = Instance.new("TextLabel")
+        combatInfo.Size = UDim2.new(1, -20, 0, 80)
+        combatInfo.Position = UDim2.new(0, 10, 0, 180)
+        combatInfo.BackgroundTransparency = 1
+        combatInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
+        combatInfo.TextSize = 14
+        combatInfo.Font = retroFont
+        combatInfo.TextWrapped = true
+        combatInfo.Text = "Silent Aim: Works with ANY weapon, locks onto closest player.\nAimlock: Locks onto MURDERER's torso only (best with Sheriff gun)."
+        combatInfo.Parent = scrollFrame
         
         -- Animate expand/collapse
         local function expandOptions()
@@ -859,7 +992,6 @@ local function createSectionContent(sectionName)
         end
         
         -- Silent Aim toggle logic
-        local silentAimConnection = nil
         silentButton.MouseButton1Click:Connect(function()
             if silentAimEnabled then
                 silentAimEnabled = false
@@ -867,14 +999,31 @@ local function createSectionContent(sectionName)
                 silentButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
                 silentButton.Text = "OFF"
                 collapseOptions()
-                silentInfo.Text = "Universal Silent Aim DISABLED. Works with ANY weapon, locks onto closest player."
+                combatInfo.Text = "Silent Aim: DISABLED | Aimlock: " .. (aimlockEnabled and "ON" or "OFF") .. "\nAimlock: Locks onto MURDERER's torso only."
             else
                 silentAimEnabled = true
                 silentAimConnection = RunService.RenderStepped:Connect(updateSilentAim)
                 silentButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
                 silentButton.Text = "ON"
                 expandOptions()
-                silentInfo.Text = "Universal Silent Aim ENABLED! Aims at closest player. FOV circle option below."
+                combatInfo.Text = "Silent Aim: ENABLED | Aimlock: " .. (aimlockEnabled and "ON" or "OFF") .. "\nAimlock: Locks onto MURDERER's torso only."
+            end
+        end)
+        
+        -- Aimlock toggle logic
+        aimlockButton.MouseButton1Click:Connect(function()
+            if aimlockEnabled then
+                aimlockEnabled = false
+                stopAimlock()
+                aimlockButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+                aimlockButton.Text = "OFF"
+                combatInfo.Text = "Silent Aim: " .. (silentAimEnabled and "ON" or "OFF") .. " | Aimlock: DISABLED\nAimlock: Locks onto MURDERER's torso only."
+            else
+                aimlockEnabled = true
+                startAimlock()
+                aimlockButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+                aimlockButton.Text = "ON"
+                combatInfo.Text = "Silent Aim: " .. (silentAimEnabled and "ON" or "OFF") .. " | Aimlock: ENABLED\nAimlock: Locks onto MURDERER's torso only (best with Sheriff gun)."
             end
         end)
         
@@ -884,7 +1033,7 @@ local function createSectionContent(sectionName)
         end)
         
     elseif sectionName == "Auto-farm" then
-        -- Auto Collect Coins (Underground Flying)
+        -- Auto Collect Coins (Rewritten - Working)
         local autoFrame = Instance.new("Frame")
         autoFrame.Size = UDim2.new(1, -20, 0, 50)
         autoFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
@@ -900,7 +1049,7 @@ local function createSectionContent(sectionName)
         autoLabel.Size = UDim2.new(0.6, 0, 1, 0)
         autoLabel.Position = UDim2.new(0.05, 0, 0, 0)
         autoLabel.BackgroundTransparency = 1
-        autoLabel.Text = "Auto Farm Coins (Underground Flying)"
+        autoLabel.Text = "AUTO COLLECT COINS (FLY)"
         autoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         autoLabel.TextSize = 16
         autoLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -922,15 +1071,25 @@ local function createSectionContent(sectionName)
         btnCorner2.CornerRadius = UDim.new(0, 6)
         btnCorner2.Parent = autoButton
         
+        local autoStatus = Instance.new("TextLabel")
+        autoStatus.Size = UDim2.new(1, -20, 0, 30)
+        autoStatus.Position = UDim2.new(0, 10, 0, 65)
+        autoStatus.BackgroundTransparency = 1
+        autoStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
+        autoStatus.TextSize = 14
+        autoStatus.Font = retroFont
+        autoStatus.Text = "Status: Idle"
+        autoStatus.Parent = scrollFrame
+        
         local autoInfo = Instance.new("TextLabel")
         autoInfo.Size = UDim2.new(1, -20, 0, 100)
-        autoInfo.Position = UDim2.new(0, 10, 0, 70)
+        autoInfo.Position = UDim2.new(0, 10, 0, 105)
         autoInfo.BackgroundTransparency = 1
         autoInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
         autoInfo.TextSize = 14
         autoInfo.Font = retroFont
         autoInfo.TextWrapped = true
-        autoInfo.Text = "Auto collects coins that spawn on the ground and underground. FLYS through floors at speed 25 to reach coins. Prioritizes the closest coin first."
+        autoInfo.Text = "Auto collects coins that spawn on the ground. FLYS through floors at speed 25 to reach coins. Prioritizes the closest coin first.\n\nNote: Works with any coin collectible in the game."
         autoInfo.Parent = scrollFrame
         
         autoButton.MouseButton1Click:Connect(function()
@@ -939,13 +1098,17 @@ local function createSectionContent(sectionName)
                 stopAutoCollect()
                 autoButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
                 autoButton.Text = "OFF"
-                autoInfo.Text = "Auto Collect DISABLED. When ON, flies underground to collect closest coins at speed 25."
+                autoStatus.Text = "Status: Idle"
+                autoStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
+                autoInfo.Text = "Auto Collect DISABLED. When ON, flies to collect closest coins at speed 25."
             else
                 autoCollectEnabled = true
                 startAutoCollect()
                 autoButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
                 autoButton.Text = "ON"
-                autoInfo.Text = "Auto Collect ENABLED! Flying underground to collect closest coins at speed 25."
+                autoStatus.Text = "Status: Flying to collect coins..."
+                autoStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
+                autoInfo.Text = "Auto Collect ENABLED! Flying to collect closest coins at speed 25."
             end
         end)
         
@@ -1226,7 +1389,7 @@ function transitionToMain()
         sectionButtons["Main"].MouseButton1Click:Fire()
     end
     
-    print("YAGAMI HUB - MM2 Edition Loaded! Role-Based ESP + Underground Flying Farm!")
+    print("YAGAMI HUB - MM2 Edition Loaded! Features: Aimlock (Murderer Only), Role-Based ESP, Underground Flying Farm!")
 end
 
 updateLoading()
@@ -1260,7 +1423,12 @@ plr.CharacterAdded:Connect(function()
     task.wait(1)
     updateRole()
     if autoCollectEnabled then
+        stopAutoCollect()
         startAutoCollect()
+    end
+    if aimlockEnabled then
+        stopAimlock()
+        startAimlock()
     end
 end)
 
@@ -1268,4 +1436,4 @@ end)
 task.wait(2)
 updateRole()
 
-print("YAGAMI HUB - MM2 Ready! Features: Universal Silent Aim, Underground Flying Coin Farm, Animated FOV Circle, Role-Based ESP (Green/Red/Blue)")
+print("YAGAMI HUB - MM2 Ready! Features: Aimlock (Murderer Only), Underground Flying Farm, Role-Based ESP, Silent Aim, FOV Circle")
