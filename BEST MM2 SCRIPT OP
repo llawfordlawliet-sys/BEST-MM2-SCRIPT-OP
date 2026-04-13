@@ -11,7 +11,6 @@ local AimlockEnabled = false
 local CurrentFOV = 100
 local ShowFOVCircle = false
 local FOVCircle = nil
-local CurrentTarget = nil
 
 --// ESP Variables
 local ESPEnabled = true
@@ -20,21 +19,24 @@ local ESPObjects = {}
 --// Platform Variables
 local PlatformSpawnerEnabled = false
 local CurrentPlatform = nil
+local CanSpawnPlatform = true
 
 --// Create ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AimlockESP"
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
 
 --// Main Frame
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 250, 0, 400)
 MainFrame.Position = UDim2.new(0, 10, 0, 10)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.BackgroundTransparency = 0.1
+MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
+MainFrame.Visible = true
 MainFrame.Parent = ScreenGui
 
 --// UI Corner
@@ -63,6 +65,7 @@ local AimlockToggle = Instance.new("TextButton")
 AimlockToggle.Size = UDim2.new(0, 200, 0, 35)
 AimlockToggle.Position = UDim2.new(0, 25, 0, 45)
 AimlockToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+AimlockToggle.BackgroundTransparency = 0
 AimlockToggle.Text = "Aimlock: OFF"
 AimlockToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 AimlockToggle.TextSize = 14
@@ -89,6 +92,7 @@ local FOVSlider = Instance.new("TextButton")
 FOVSlider.Size = UDim2.new(0, 200, 0, 5)
 FOVSlider.Position = UDim2.new(0, 25, 0, 120)
 FOVSlider.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+FOVSlider.BackgroundTransparency = 0
 FOVSlider.AutoButtonColor = false
 FOVSlider.Parent = MainFrame
 
@@ -111,6 +115,7 @@ local FOVCircleToggle = Instance.new("TextButton")
 FOVCircleToggle.Size = UDim2.new(0, 200, 0, 35)
 FOVCircleToggle.Position = UDim2.new(0, 25, 0, 140)
 FOVCircleToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+FOVCircleToggle.BackgroundTransparency = 0
 FOVCircleToggle.Text = "FOV Circle: OFF"
 FOVCircleToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 FOVCircleToggle.TextSize = 14
@@ -126,6 +131,7 @@ local ESPToggle = Instance.new("TextButton")
 ESPToggle.Size = UDim2.new(0, 200, 0, 35)
 ESPToggle.Position = UDim2.new(0, 25, 0, 190)
 ESPToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ESPToggle.BackgroundTransparency = 0
 ESPToggle.Text = "ESP: ON"
 ESPToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 ESPToggle.TextSize = 14
@@ -141,6 +147,7 @@ local PlatformToggle = Instance.new("TextButton")
 PlatformToggle.Size = UDim2.new(0, 200, 0, 35)
 PlatformToggle.Position = UDim2.new(0, 25, 0, 240)
 PlatformToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+PlatformToggle.BackgroundTransparency = 0
 PlatformToggle.Text = "Platform Spawner: OFF"
 PlatformToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 PlatformToggle.TextSize = 14
@@ -156,6 +163,7 @@ local CloseButton = Instance.new("TextButton")
 CloseButton.Size = UDim2.new(0, 30, 0, 30)
 CloseButton.Position = UDim2.new(1, -35, 0, 0)
 CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseButton.BackgroundTransparency = 0
 CloseButton.Text = "X"
 CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseButton.TextSize = 16
@@ -243,11 +251,11 @@ local function GetOutlineColor(player)
     local weaponType = GetPlayerWeaponType(player)
     
     if weaponType == "gun" then
-        return Color3.fromRGB(0, 100, 255) -- Blue
+        return Color3.fromRGB(0, 100, 255)
     elseif weaponType == "knife" then
-        return Color3.fromRGB(255, 0, 0) -- Red
+        return Color3.fromRGB(255, 0, 0)
     else
-        return Color3.fromRGB(0, 255, 0) -- Green
+        return Color3.fromRGB(0, 255, 0)
     end
 end
 
@@ -293,17 +301,15 @@ local function CreateESP(player)
     ESPObjects[player] = espData
 end
 
---// Refresh ESP (called every 1 second)
+--// Refresh ESP
 local function RefreshESP()
     if not ESPEnabled then
         CleanupESP()
         return
     end
     
-    -- Clear existing ESP
     CleanupESP()
     
-    -- Recreate ESP for all players
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             CreateESP(player)
@@ -327,7 +333,6 @@ local function UpdateESP()
                 local outlineColor = GetOutlineColor(player)
                 local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
                 
-                -- Update Box
                 local boxSize = 100 / vector.Z
                 local boxPosition = Vector2.new(vector.X - boxSize / 2, vector.Y - boxSize)
                 espData.box.Size = Vector2.new(boxSize, boxSize * 1.5)
@@ -335,7 +340,6 @@ local function UpdateESP()
                 espData.box.Color = outlineColor
                 espData.box.Visible = true
                 
-                -- Update Name Tag with weapon icon
                 local nameText = player.Name
                 local weaponType = GetPlayerWeaponType(player)
                 if weaponType == "gun" then
@@ -349,7 +353,6 @@ local function UpdateESP()
                 espData.nameTag.Color = outlineColor
                 espData.nameTag.Visible = true
                 
-                -- Update Health Bar Background
                 local healthBarX = vector.X - boxSize / 2 - 5
                 local healthBarTop = vector.Y - boxSize
                 local healthBarBottom = healthBarTop + (boxSize * 1.5)
@@ -358,11 +361,9 @@ local function UpdateESP()
                 espData.healthBarBg.To = Vector2.new(healthBarX, healthBarBottom)
                 espData.healthBarBg.Visible = true
                 
-                -- Update Health Bar Fill
                 local fillHeight = (boxSize * 1.5) * healthPercent
                 espData.healthBarFill.From = Vector2.new(healthBarX, healthBarBottom - fillHeight)
                 espData.healthBarFill.To = Vector2.new(healthBarX, healthBarBottom)
-                espData.healthBarFill.Color = Color3.fromRGB(0, 255, 0)
                 espData.healthBarFill.Visible = true
             else
                 espData.box.Visible = false
@@ -395,409 +396,7 @@ end
 --// Platform Spawn Function
 local function SpawnPlatform()
     if not PlatformSpawnerEnabled then return end
-    
-    local character = LocalPlayer.Character
-    if not character then return end
-    
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
---// Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Camera = workspace.CurrentCamera
-
---// Variables
-local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
-local AimlockEnabled = false
-local CurrentFOV = 100
-local ShowFOVCircle = false
-local FOVCircle = nil
-
---// ESP Variables
-local ESPEnabled = true
-local ESPObjects = {}
-
---// Platform Variables
-local PlatformSpawnerEnabled = false
-local CurrentPlatform = nil
-local CanSpawnPlatform = true -- Prevents multiple spawns until platform is destroyed
-
---// Create ScreenGui
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AimlockESP"
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
---// Main Frame
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 250, 0, 400)
-MainFrame.Position = UDim2.new(0, 10, 0, 10)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.BackgroundTransparency = 0.1
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
-
---// UI Corner
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = MainFrame
-
---// Title
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Position = UDim2.new(0, 0, 0, 0)
-Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Title.BackgroundTransparency = 0
-Title.Text = "Aimlock + ESP + Platform"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
-Title.Font = Enum.Font.GothamBold
-Title.Parent = MainFrame
-
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 8)
-TitleCorner.Parent = Title
-
---// Aimlock Toggle
-local AimlockToggle = Instance.new("TextButton")
-AimlockToggle.Size = UDim2.new(0, 200, 0, 35)
-AimlockToggle.Position = UDim2.new(0, 25, 0, 45)
-AimlockToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-AimlockToggle.Text = "Aimlock: OFF"
-AimlockToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-AimlockToggle.TextSize = 14
-AimlockToggle.Font = Enum.Font.Gotham
-AimlockToggle.Parent = MainFrame
-
-local AimlockCorner = Instance.new("UICorner")
-AimlockCorner.CornerRadius = UDim.new(0, 5)
-AimlockCorner.Parent = AimlockToggle
-
---// FOV Slider Label
-local FOVLabel = Instance.new("TextLabel")
-FOVLabel.Size = UDim2.new(0, 200, 0, 25)
-FOVLabel.Position = UDim2.new(0, 25, 0, 95)
-FOVLabel.BackgroundTransparency = 1
-FOVLabel.Text = "FOV Range: " .. CurrentFOV
-FOVLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-FOVLabel.TextSize = 14
-FOVLabel.Font = Enum.Font.Gotham
-FOVLabel.Parent = MainFrame
-
---// FOV Slider
-local FOVSlider = Instance.new("TextButton")
-FOVSlider.Size = UDim2.new(0, 200, 0, 5)
-FOVSlider.Position = UDim2.new(0, 25, 0, 120)
-FOVSlider.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-FOVSlider.AutoButtonColor = false
-FOVSlider.Parent = MainFrame
-
-local SliderCorner = Instance.new("UICorner")
-SliderCorner.CornerRadius = UDim.new(0, 3)
-SliderCorner.Parent = FOVSlider
-
-local SliderFill = Instance.new("Frame")
-SliderFill.Size = UDim2.new(CurrentFOV / 200, 0, 1, 0)
-SliderFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-SliderFill.BorderSizePixel = 0
-SliderFill.Parent = FOVSlider
-
-local FillCorner = Instance.new("UICorner")
-FillCorner.CornerRadius = UDim.new(0, 3)
-FillCorner.Parent = SliderFill
-
---// FOV Circle Toggle
-local FOVCircleToggle = Instance.new("TextButton")
-FOVCircleToggle.Size = UDim2.new(0, 200, 0, 35)
-FOVCircleToggle.Position = UDim2.new(0, 25, 0, 140)
-FOVCircleToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-FOVCircleToggle.Text = "FOV Circle: OFF"
-FOVCircleToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-FOVCircleToggle.TextSize = 14
-FOVCircleToggle.Font = Enum.Font.Gotham
-FOVCircleToggle.Parent = MainFrame
-
-local FOVCircleCorner = Instance.new("UICorner")
-FOVCircleCorner.CornerRadius = UDim.new(0, 5)
-FOVCircleCorner.Parent = FOVCircleToggle
-
---// ESP Toggle
-local ESPToggle = Instance.new("TextButton")
-ESPToggle.Size = UDim2.new(0, 200, 0, 35)
-ESPToggle.Position = UDim2.new(0, 25, 0, 190)
-ESPToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-ESPToggle.Text = "ESP: ON"
-ESPToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-ESPToggle.TextSize = 14
-ESPToggle.Font = Enum.Font.Gotham
-ESPToggle.Parent = MainFrame
-
-local ESPCorner = Instance.new("UICorner")
-ESPCorner.CornerRadius = UDim.new(0, 5)
-ESPCorner.Parent = ESPToggle
-
---// Platform Spawner Toggle
-local PlatformToggle = Instance.new("TextButton")
-PlatformToggle.Size = UDim2.new(0, 200, 0, 35)
-PlatformToggle.Position = UDim2.new(0, 25, 0, 240)
-PlatformToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-PlatformToggle.Text = "Platform Spawner: OFF"
-PlatformToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-PlatformToggle.TextSize = 14
-PlatformToggle.Font = Enum.Font.Gotham
-PlatformToggle.Parent = MainFrame
-
-local PlatformCorner = Instance.new("UICorner")
-PlatformCorner.CornerRadius = UDim.new(0, 5)
-PlatformCorner.Parent = PlatformToggle
-
---// Close Button
-local CloseButton = Instance.new("TextButton")
-CloseButton.Size = UDim2.new(0, 30, 0, 30)
-CloseButton.Position = UDim2.new(1, -35, 0, 0)
-CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-CloseButton.Text = "X"
-CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseButton.TextSize = 16
-CloseButton.Font = Enum.Font.GothamBold
-CloseButton.Parent = MainFrame
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 8)
-CloseCorner.Parent = CloseButton
-
---// Create FOV Circle
-local function CreateFOVCircle()
-    if FOVCircle then
-        FOVCircle:Destroy()
-    end
-    
-    local circle = Drawing.new("Circle")
-    circle.Visible = ShowFOVCircle
-    circle.Radius = (CurrentFOV / 100) * (Camera.ViewportSize.Y / 2)
-    circle.Thickness = 2
-    circle.Color = Color3.fromRGB(0, 255, 0)
-    circle.NumSides = 64
-    circle.Filled = false
-    circle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    circle.Transparency = 1
-    
-    return circle
-end
-
---// Get Player Weapon Type (MM2 specific)
-local function GetPlayerWeaponType(player)
-    local character = player.Character
-    if not character then return "none" end
-    
-    -- Check currently held tool
-    local currentTool = character:FindFirstChildWhichIsA("Tool")
-    
-    -- Check backpack
-    local backpack = player:FindFirstChild("Backpack")
-    
-    local hasGun = false
-    local hasKnife = false
-    
-    -- Check current tool
-    if currentTool then
-        local toolName = currentTool.Name:lower()
-        if toolName:find("gun") or toolName:find("pistol") or toolName:find("rifle") or 
-           toolName:find("shotgun") or toolName:find("sniper") or toolName:find("blaster") or
-           currentTool:FindFirstChild("Fire") or currentTool:FindFirstChild("Shoot") then
-            hasGun = true
-        end
-        if toolName:find("knife") or toolName:find("dagger") or toolName:find("blade") or
-           toolName:find("sword") or toolName:find("melee") then
-            hasKnife = true
-        end
-    end
-    
-    -- Check backpack
-    if backpack then
-        for _, tool in pairs(backpack:GetChildren()) do
-            if tool:IsA("Tool") then
-                local toolName = tool.Name:lower()
-                if toolName:find("gun") or toolName:find("pistol") or toolName:find("rifle") or 
-                   toolName:find("shotgun") or toolName:find("sniper") then
-                    hasGun = true
-                end
-                if toolName:find("knife") or toolName:find("dagger") or toolName:find("blade") then
-                    hasKnife = true
-                end
-            end
-        end
-    end
-    
-    if hasGun then
-        return "gun"
-    elseif hasKnife then
-        return "knife"
-    else
-        return "none"
-    end
-end
-
---// Get Outline Color
-local function GetOutlineColor(player)
-    local weaponType = GetPlayerWeaponType(player)
-    
-    if weaponType == "gun" then
-        return Color3.fromRGB(0, 100, 255) -- Blue
-    elseif weaponType == "knife" then
-        return Color3.fromRGB(255, 0, 0) -- Red
-    else
-        return Color3.fromRGB(0, 255, 0) -- Green
-    end
-end
-
---// Create ESP for Player
-local function CreateESP(player)
-    if not ESPEnabled then return end
-    if player == LocalPlayer then return end
-    
-    local espData = {}
-    
-    -- Name Tag
-    local nameTag = Drawing.new("Text")
-    nameTag.Visible = true
-    nameTag.Size = 14
-    nameTag.Center = true
-    nameTag.Outline = true
-    nameTag.OutlineColor = Color3.fromRGB(0, 0, 0)
-    
-    -- Box
-    local box = Drawing.new("Square")
-    box.Visible = true
-    box.Thickness = 2
-    box.Filled = false
-    
-    -- Health Bar Background
-    local healthBarBg = Drawing.new("Line")
-    healthBarBg.Visible = true
-    healthBarBg.Thickness = 3
-    healthBarBg.Color = Color3.fromRGB(50, 50, 50)
-    
-    -- Health Bar Fill
-    local healthBarFill = Drawing.new("Line")
-    healthBarFill.Visible = true
-    healthBarFill.Thickness = 3
-    healthBarFill.Color = Color3.fromRGB(0, 255, 0)
-    
-    espData.nameTag = nameTag
-    espData.box = box
-    espData.healthBarBg = healthBarBg
-    espData.healthBarFill = healthBarFill
-    espData.player = player
-    
-    ESPObjects[player] = espData
-end
-
---// Refresh ESP (called every 1 second)
-local function RefreshESP()
-    if not ESPEnabled then
-        CleanupESP()
-        return
-    end
-    
-    -- Clear existing ESP
-    CleanupESP()
-    
-    -- Recreate ESP for all players
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            CreateESP(player)
-        end
-    end
-end
-
---// Update ESP
-local function UpdateESP()
-    if not ESPEnabled then return end
-    
-    for player, espData in pairs(ESPObjects) do
-        if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
-            local character = player.Character
-            local humanoidRootPart = character.HumanoidRootPart
-            local humanoid = character.Humanoid
-            
-            local vector, onScreen = Camera:WorldToViewportPoint(humanoidRootPart.Position)
-            
-            if onScreen and humanoid.Health > 0 then
-                local outlineColor = GetOutlineColor(player)
-                local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
-                
-                -- Update Box
-                local boxSize = 100 / vector.Z
-                local boxPosition = Vector2.new(vector.X - boxSize / 2, vector.Y - boxSize)
-                espData.box.Size = Vector2.new(boxSize, boxSize * 1.5)
-                espData.box.Position = boxPosition
-                espData.box.Color = outlineColor
-                espData.box.Visible = true
-                
-                -- Update Name Tag with weapon icon
-                local nameText = player.Name
-                local weaponType = GetPlayerWeaponType(player)
-                if weaponType == "gun" then
-                    nameText = nameText .. " 🔫"
-                elseif weaponType == "knife" then
-                    nameText = nameText .. " 🔪"
-                end
-                
-                espData.nameTag.Text = nameText
-                espData.nameTag.Position = Vector2.new(vector.X, vector.Y - boxSize - 15)
-                espData.nameTag.Color = outlineColor
-                espData.nameTag.Visible = true
-                
-                -- Update Health Bar Background
-                local healthBarX = vector.X - boxSize / 2 - 5
-                local healthBarTop = vector.Y - boxSize
-                local healthBarBottom = healthBarTop + (boxSize * 1.5)
-                
-                espData.healthBarBg.From = Vector2.new(healthBarX, healthBarTop)
-                espData.healthBarBg.To = Vector2.new(healthBarX, healthBarBottom)
-                espData.healthBarBg.Visible = true
-                
-                -- Update Health Bar Fill
-                local fillHeight = (boxSize * 1.5) * healthPercent
-                espData.healthBarFill.From = Vector2.new(healthBarX, healthBarBottom - fillHeight)
-                espData.healthBarFill.To = Vector2.new(healthBarX, healthBarBottom)
-                espData.healthBarFill.Color = Color3.fromRGB(0, 255, 0)
-                espData.healthBarFill.Visible = true
-            else
-                espData.box.Visible = false
-                espData.nameTag.Visible = false
-                espData.healthBarBg.Visible = false
-                espData.healthBarFill.Visible = false
-            end
-        else
-            if espData.box then
-                espData.box.Visible = false
-                espData.nameTag.Visible = false
-                espData.healthBarBg.Visible = false
-                espData.healthBarFill.Visible = false
-            end
-        end
-    end
-end
-
---// Cleanup ESP
-local function CleanupESP()
-    for player, espData in pairs(ESPObjects) do
-        if espData.nameTag then espData.nameTag:Remove() end
-        if espData.box then espData.box:Remove() end
-        if espData.healthBarBg then espData.healthBarBg:Remove() end
-        if espData.healthBarFill then espData.healthBarFill:Remove() end
-    end
-    ESPObjects = {}
-end
-
---// Platform Spawn Function
-local function SpawnPlatform()
-    if not PlatformSpawnerEnabled then return end
-    if not CanSpawnPlatform then return end -- Can't spawn if platform already exists
+    if not CanSpawnPlatform then return end
     if CurrentPlatform and CurrentPlatform.Parent then return end
     
     local character = LocalPlayer.Character
@@ -806,7 +405,6 @@ local function SpawnPlatform()
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then return end
     
-    -- Create invisible platform exactly 2 studs below avatar
     local platform = Instance.new("Part")
     platform.Size = Vector3.new(7, 0.5, 7)
     platform.Position = humanoidRootPart.Position - Vector3.new(0, 2, 0)
@@ -816,24 +414,18 @@ local function SpawnPlatform()
     platform.Material = Enum.Material.SmoothPlastic
     platform.Name = "JumpPlatform"
     
-    -- Prevent multiple spawns
     CanSpawnPlatform = false
     CurrentPlatform = platform
     
-    -- Touch detection for jumping
     local function onTouch(hit)
         if not platform or not platform.Parent then return end
         
         local character = hit.Parent
         if character and character:FindFirstChild("Humanoid") then
-            local humanoid = character.Humanoid
             local rootPart = character:FindFirstChild("HumanoidRootPart")
             
-            -- Check if it's the local player touching
             if character == LocalPlayer.Character then
-                -- Check if player is jumping (velocity Y > 0)
                 if rootPart and rootPart.Velocity.Y > 1 then
-                    -- Player jumped on platform, destroy it and allow new spawn
                     platform:Destroy()
                     CurrentPlatform = nil
                     CanSpawnPlatform = true
@@ -845,7 +437,6 @@ local function SpawnPlatform()
     platform.Touched:Connect(onTouch)
     platform.Parent = workspace
     
-    -- Auto destroy after 3 seconds and allow new spawn
     task.delay(3, function()
         if CurrentPlatform == platform and platform and platform.Parent then
             platform:Destroy()
@@ -966,7 +557,6 @@ PlatformToggle.MouseButton1Click:Connect(function()
     PlatformToggle.Text = PlatformSpawnerEnabled and "Platform Spawner: ON" or "Platform Spawner: OFF"
     PlatformToggle.BackgroundColor3 = PlatformSpawnerEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
     
-    -- Reset platform state when toggling off
     if not PlatformSpawnerEnabled then
         if CurrentPlatform and CurrentPlatform.Parent then
             CurrentPlatform:Destroy()
@@ -987,7 +577,6 @@ Mouse.Button1Down:Connect(function()
         if character then
             local currentTool = character:FindFirstChildWhichIsA("Tool")
             if currentTool and CanSpawnPlatform then
-                -- Holding an item and can spawn, spawn platform
                 SpawnPlatform()
             end
         end
@@ -1025,7 +614,6 @@ RunService.RenderStepped:Connect(function()
     Aimlock()
     UpdateESP()
     
-    -- Update FOV Circle position and radius if visible
     if ShowFOVCircle and FOVCircle then
         FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
         FOVCircle.Radius = (CurrentFOV / 100) * (Camera.ViewportSize.Y / 2)
@@ -1036,4 +624,4 @@ end)
 task.wait(0.5)
 RefreshESP()
 
-print("Script loaded successfully!")
+print("Script loaded successfully! GUI should be visible in top-left corner.")
