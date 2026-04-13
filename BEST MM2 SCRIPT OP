@@ -11,13 +11,14 @@ local AimlockEnabled = false
 local CurrentFOV = 100
 local ShowFOVCircle = false
 local FOVCircle = nil
+local CurrentTarget = nil
 
 --// ESP Variables
 local ESPEnabled = true
 local ESPObjects = {}
 
---// Platform Spawn Variables
-local PlatformActive = false
+--// Platform Variables
+local PlatformSpawnerEnabled = false
 local CurrentPlatform = nil
 
 --// Create ScreenGui
@@ -27,7 +28,7 @@ ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 --// Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 250, 0, 360)
+MainFrame.Size = UDim2.new(0, 250, 0, 400)
 MainFrame.Position = UDim2.new(0, 10, 0, 10)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BackgroundTransparency = 0.1
@@ -135,12 +136,12 @@ local ESPCorner = Instance.new("UICorner")
 ESPCorner.CornerRadius = UDim.new(0, 5)
 ESPCorner.Parent = ESPToggle
 
---// Platform Spawn Toggle
+--// Platform Spawner Toggle
 local PlatformToggle = Instance.new("TextButton")
 PlatformToggle.Size = UDim2.new(0, 200, 0, 35)
 PlatformToggle.Position = UDim2.new(0, 25, 0, 240)
 PlatformToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-PlatformToggle.Text = "Platform Spawner: ON"
+PlatformToggle.Text = "Platform Spawner: OFF"
 PlatformToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 PlatformToggle.TextSize = 14
 PlatformToggle.Font = Enum.Font.Gotham
@@ -189,42 +190,42 @@ local function GetPlayerWeaponType(player)
     local character = player.Character
     if not character then return "none" end
     
-    -- Check hotbar/inventory for MM2 items
-    local backpack = player:FindFirstChild("Backpack")
-    local tools = {}
-    
-    if backpack then
-        for _, tool in pairs(backpack:GetChildren()) do
-            if tool:IsA("Tool") then
-                table.insert(tools, tool)
-            end
-        end
-    end
-    
     -- Check currently held tool
     local currentTool = character:FindFirstChildWhichIsA("Tool")
-    if currentTool then
-        table.insert(tools, currentTool)
-    end
     
-    -- Analyze tools for weapons
+    -- Check backpack
+    local backpack = player:FindFirstChild("Backpack")
+    
     local hasGun = false
     local hasKnife = false
     
-    for _, tool in pairs(tools) do
-        local toolName = tool.Name:lower()
-        
-        -- MM2 Gun detection
+    -- Check current tool
+    if currentTool then
+        local toolName = currentTool.Name:lower()
         if toolName:find("gun") or toolName:find("pistol") or toolName:find("rifle") or 
            toolName:find("shotgun") or toolName:find("sniper") or toolName:find("blaster") or
-           tool:FindFirstChild("Fire") or tool:FindFirstChild("Shoot") then
+           currentTool:FindFirstChild("Fire") or currentTool:FindFirstChild("Shoot") then
             hasGun = true
         end
-        
-        -- MM2 Knife detection
         if toolName:find("knife") or toolName:find("dagger") or toolName:find("blade") or
            toolName:find("sword") or toolName:find("melee") then
             hasKnife = true
+        end
+    end
+    
+    -- Check backpack
+    if backpack then
+        for _, tool in pairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                local toolName = tool.Name:lower()
+                if toolName:find("gun") or toolName:find("pistol") or toolName:find("rifle") or 
+                   toolName:find("shotgun") or toolName:find("sniper") then
+                    hasGun = true
+                end
+                if toolName:find("knife") or toolName:find("dagger") or toolName:find("blade") then
+                    hasKnife = true
+                end
+            end
         end
     end
     
@@ -271,14 +272,22 @@ local function CreateESP(player)
     box.Thickness = 2
     box.Filled = false
     
-    -- Health Bar
-    local healthBar = Drawing.new("Line")
-    healthBar.Visible = true
-    healthBar.Thickness = 3
+    -- Health Bar Background
+    local healthBarBg = Drawing.new("Line")
+    healthBarBg.Visible = true
+    healthBarBg.Thickness = 3
+    healthBarBg.Color = Color3.fromRGB(50, 50, 50)
+    
+    -- Health Bar Fill
+    local healthBarFill = Drawing.new("Line")
+    healthBarFill.Visible = true
+    healthBarFill.Thickness = 3
+    healthBarFill.Color = Color3.fromRGB(0, 255, 0)
     
     espData.nameTag = nameTag
     espData.box = box
-    espData.healthBar = healthBar
+    espData.healthBarBg = healthBarBg
+    espData.healthBarFill = healthBarFill
     espData.player = player
     
     ESPObjects[player] = espData
@@ -316,7 +325,7 @@ local function UpdateESP()
             
             if onScreen and humanoid.Health > 0 then
                 local outlineColor = GetOutlineColor(player)
-                local healthPercent = humanoid.Health / humanoid.MaxHealth
+                local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
                 
                 -- Update Box
                 local boxSize = 100 / vector.Z
@@ -340,22 +349,33 @@ local function UpdateESP()
                 espData.nameTag.Color = outlineColor
                 espData.nameTag.Visible = true
                 
-                -- Update Health Bar
-                local healthBarPos = Vector2.new(vector.X - boxSize / 2 - 5, vector.Y - boxSize)
-                espData.healthBar.From = healthBarPos
-                espData.healthBar.To = Vector2.new(healthBarPos.X, healthBarPos.Y + (boxSize * 1.5) * healthPercent)
-                espData.healthBar.Color = Color3.fromRGB(0, 255, 0)
-                espData.healthBar.Visible = true
+                -- Update Health Bar Background
+                local healthBarX = vector.X - boxSize / 2 - 5
+                local healthBarTop = vector.Y - boxSize
+                local healthBarBottom = healthBarTop + (boxSize * 1.5)
+                
+                espData.healthBarBg.From = Vector2.new(healthBarX, healthBarTop)
+                espData.healthBarBg.To = Vector2.new(healthBarX, healthBarBottom)
+                espData.healthBarBg.Visible = true
+                
+                -- Update Health Bar Fill
+                local fillHeight = (boxSize * 1.5) * healthPercent
+                espData.healthBarFill.From = Vector2.new(healthBarX, healthBarBottom - fillHeight)
+                espData.healthBarFill.To = Vector2.new(healthBarX, healthBarBottom)
+                espData.healthBarFill.Color = Color3.fromRGB(0, 255, 0)
+                espData.healthBarFill.Visible = true
             else
                 espData.box.Visible = false
                 espData.nameTag.Visible = false
-                espData.healthBar.Visible = false
+                espData.healthBarBg.Visible = false
+                espData.healthBarFill.Visible = false
             end
         else
             if espData.box then
                 espData.box.Visible = false
                 espData.nameTag.Visible = false
-                espData.healthBar.Visible = false
+                espData.healthBarBg.Visible = false
+                espData.healthBarFill.Visible = false
             end
         end
     end
@@ -366,15 +386,15 @@ local function CleanupESP()
     for player, espData in pairs(ESPObjects) do
         if espData.nameTag then espData.nameTag:Remove() end
         if espData.box then espData.box:Remove() end
-        if espData.healthBar then espData.healthBar:Remove() end
+        if espData.healthBarBg then espData.healthBarBg:Remove() end
+        if espData.healthBarFill then espData.healthBarFill:Remove() end
     end
     ESPObjects = {}
 end
 
 --// Platform Spawn Function
 local function SpawnPlatform()
-    if not PlatformActive then return end
-    if CurrentPlatform and CurrentPlatform.Parent then return end -- Platform already exists
+    if not PlatformSpawnerEnabled then return end
     
     local character = LocalPlayer.Character
     if not character then return end
@@ -382,64 +402,77 @@ local function SpawnPlatform()
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then return end
     
-    -- Create platform
+    -- Remove existing platform if it exists
+    if CurrentPlatform and CurrentPlatform.Parent then
+        CurrentPlatform:Destroy()
+        CurrentPlatform = nil
+    end
+    
+    -- Create invisible platform
     local platform = Instance.new("Part")
-    platform.Size = Vector3.new(7, 0.2, 7)
+    platform.Size = Vector3.new(7, 0.5, 7)
     platform.Position = humanoidRootPart.Position - Vector3.new(0, 2, 0)
     platform.Anchored = true
     platform.CanCollide = true
-    platform.Transparency = 1 -- Invisible
-    platform.Material = Enum.Material.Plastic
+    platform.Transparency = 1
+    platform.Material = Enum.Material.SmoothPlastic
     platform.Name = "JumpPlatform"
     
-    -- Make it jumpable (can collide)
-    platform.CanCollide = true
-    
-    -- Add touch interest to detect when player jumps on it
-    local touchInterest = Instance.new("TouchTransmitter")
-    touchInterest.Parent = platform
-    platform.Touched:Connect(function(hit)
+    -- Add touch detection
+    local function onTouch(hit)
+        if not platform or not platform.Parent then return end
+        
         local character = hit.Parent
-        if character and character:FindFirstChild("Humanoid") and character == LocalPlayer.Character then
+        if character and character:FindFirstChild("Humanoid") then
             local humanoid = character.Humanoid
-            -- Check if player is jumping (velocity Y > 0 means going up)
             local rootPart = character:FindFirstChild("HumanoidRootPart")
-            if rootPart and rootPart.Velocity.Y > 0 then
-                -- Player jumped on platform, destroy it
-                platform:Destroy()
-                CurrentPlatform = nil
+            
+            -- Check if it's the local player touching
+            if character == LocalPlayer.Character then
+                -- Check if player is jumping (velocity Y > 0)
+                if rootPart and rootPart.Velocity.Y > 2 then
+                    -- Player jumped on platform, destroy it
+                    platform:Destroy()
+                    CurrentPlatform = nil
+                end
             end
         end
-    end)
+    end
     
+    platform.Touched:Connect(onTouch)
     platform.Parent = workspace
-    
-    -- Auto-destroy after 5 seconds if not used
-    game:GetService("Debris"):AddItem(platform, 5)
-    
     CurrentPlatform = platform
+    
+    -- Auto destroy after 5 seconds
+    task.delay(5, function()
+        if CurrentPlatform == platform and platform and platform.Parent then
+            platform:Destroy()
+            CurrentPlatform = nil
+        end
+    end)
 end
 
---// Get Closest Player to Mouse/Aim
+--// Get Closest Player to Mouse
 local function GetClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = CurrentFOV
     
-    local mouseLocation = Vector2.new(Mouse.X, Mouse.Y)
-    local centerScreen = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    local aimPosition = AimlockEnabled and centerScreen or mouseLocation
+    local aimPosition = Vector2.new(Mouse.X, Mouse.Y)
     
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
-            local humanoidRootPart = player.Character.HumanoidRootPart
-            local screenPos, onScreen = Camera:WorldToViewportPoint(humanoidRootPart.Position)
-            
-            if onScreen then
-                local distance = (Vector2.new(screenPos.X, screenPos.Y) - aimPosition).Magnitude
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
+            local humanoid = player.Character.Humanoid
+            if humanoid.Health > 0 then
+                local humanoidRootPart = player.Character.HumanoidRootPart
+                local screenPos, onScreen = Camera:WorldToViewportPoint(humanoidRootPart.Position)
                 
-                if distance < shortestDistance then
-                    shortestDistance = distance
-                    closestPlayer = player
+                if onScreen then
+                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - aimPosition).Magnitude
+                    
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        closestPlayer = player
+                    end
                 end
             end
         end
@@ -448,7 +481,7 @@ local function GetClosestPlayer()
     return closestPlayer
 end
 
---// Aimlock Function (unchanged)
+--// Aimlock Function
 local function Aimlock()
     if not AimlockEnabled then return end
     
@@ -526,9 +559,9 @@ ESPToggle.MouseButton1Click:Connect(function()
 end)
 
 PlatformToggle.MouseButton1Click:Connect(function()
-    PlatformActive = not PlatformActive
-    PlatformToggle.Text = PlatformActive and "Platform Spawner: ON" or "Platform Spawner: OFF"
-    PlatformToggle.BackgroundColor3 = PlatformActive and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
+    PlatformSpawnerEnabled = not PlatformSpawnerEnabled
+    PlatformToggle.Text = PlatformSpawnerEnabled and "Platform Spawner: ON" or "Platform Spawner: OFF"
+    PlatformToggle.BackgroundColor3 = PlatformSpawnerEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
 end)
 
 CloseButton.MouseButton1Click:Connect(function()
@@ -537,7 +570,7 @@ end)
 
 --// Mouse Click for Platform Spawn
 Mouse.Button1Down:Connect(function()
-    if PlatformActive then
+    if PlatformSpawnerEnabled then
         local character = LocalPlayer.Character
         if character then
             local currentTool = character:FindFirstChildWhichIsA("Tool")
@@ -552,24 +585,28 @@ end)
 --// Player Added/Removed for ESP
 Players.PlayerAdded:Connect(function(player)
     if ESPEnabled and player ~= LocalPlayer then
+        task.wait(0.5)
         CreateESP(player)
     end
 end)
 
 Players.PlayerRemoving:Connect(function(player)
     if ESPObjects[player] then
-        ESPObjects[player].nameTag:Remove()
-        ESPObjects[player].box:Remove()
-        ESPObjects[player].healthBar:Remove()
+        if ESPObjects[player].nameTag then ESPObjects[player].nameTag:Remove() end
+        if ESPObjects[player].box then ESPObjects[player].box:Remove() end
+        if ESPObjects[player].healthBarBg then ESPObjects[player].healthBarBg:Remove() end
+        if ESPObjects[player].healthBarFill then ESPObjects[player].healthBarFill:Remove() end
         ESPObjects[player] = nil
     end
 end)
 
 --// Refresh ESP every 1 second
-while true do
-    RefreshESP()
-    wait(1)
-end
+task.spawn(function()
+    while true do
+        RefreshESP()
+        task.wait(1)
+    end
+end)
 
 --// RenderStepped for Aimlock and ESP Update
 RunService.RenderStepped:Connect(function()
@@ -584,4 +621,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 --// Initial ESP Creation
+task.wait(0.5)
 RefreshESP()
+
+print("Script loaded successfully!")
